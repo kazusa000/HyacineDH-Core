@@ -1,4 +1,4 @@
-using HyacineCore.Server.Command;
+﻿using HyacineCore.Server.Command;
 using HyacineCore.Server.Command.Command;
 using HyacineCore.Server.Configuration;
 using HyacineCore.Server.Data;
@@ -28,6 +28,12 @@ public class EntryPoint
     public static readonly Listener Listener = new();
     public static readonly CommandManager CommandManager = new();
 
+    private static void WaitForInteractiveFailure()
+    {
+        Environment.ExitCode = 1;
+        if (IConsole.IsConsoleAvailable) Console.ReadLine();
+    }
+
     public static async Task Main(string[] args)
     {
         IConsole.InitConsole();
@@ -36,6 +42,7 @@ public class EntryPoint
         {
             Logger.Info(I18NManager.Translate("Server.ServerInfo.Shutdown"));
             PerformCleanup();
+            global::HyacineCore.Server.Util.Logger.Flush();
         };
         AppDomain.CurrentDomain.UnhandledException += (obj, arg) =>
         {
@@ -123,7 +130,7 @@ public class EntryPoint
         {
             Logger.Error(
                 I18NManager.Translate("Server.ServerInfo.FailedToLoadItem", I18NManager.Translate("Word.Config")), e);
-            Console.ReadLine();
+            WaitForInteractiveFailure();
             return;
         }
 
@@ -137,7 +144,7 @@ public class EntryPoint
         {
             Logger.Error(
                 I18NManager.Translate("Server.ServerInfo.FailedToLoadItem", I18NManager.Translate("Word.Language")), e);
-            Console.ReadLine();
+            WaitForInteractiveFailure();
             return;
         }
 
@@ -155,7 +162,7 @@ public class EntryPoint
         {
             Logger.Error(
                 I18NManager.Translate("Server.ServerInfo.FailedToLoadItem", I18NManager.Translate("Word.Database")), e);
-            Console.ReadLine();
+            WaitForInteractiveFailure();
             return;
         }
 
@@ -229,7 +236,7 @@ public class EntryPoint
                 Logger.Error(
                     I18NManager.Translate("Server.ServerInfo.FailedToLoadItem", I18NManager.Translate("Word.GameData")),
                     e);
-                Console.ReadLine();
+                WaitForInteractiveFailure();
                 return;
             }
         }
@@ -244,7 +251,7 @@ public class EntryPoint
             Logger.Error(
                 I18NManager.Translate("Server.ServerInfo.FailedToInitializeItem",
                     I18NManager.Translate("Word.Command")), e);
-            Console.ReadLine();
+            WaitForInteractiveFailure();
             return;
         }
 
@@ -258,7 +265,7 @@ public class EntryPoint
         {
             Logger.Error(
                 I18NManager.Translate("Server.ServerInfo.FailedToLoadItem", I18NManager.Translate("Word.Plugin")), e);
-            Console.ReadLine();
+            WaitForInteractiveFailure();
             return;
         }
 

@@ -51,14 +51,14 @@ public static class ConfigManager
             SaveData(Config, ConfigFilePath);
         }
 
-        using (var stream = file.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+        using (var stream = file.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
         using (var reader = new StreamReader(stream))
         {
             var json = reader.ReadToEnd();
             Config = JsonConvert.DeserializeObject<ConfigContainer>(json, new JsonSerializerSettings
             {
                 ObjectCreationHandling = ObjectCreationHandling.Replace
-            })!;
+            }) ?? throw new InvalidDataException($"Empty configuration: {ConfigFilePath}");
         }
 
         GameConstants.ApplyChallengePeakConfig(Config.ServerOption.ChallengePeak);
@@ -86,11 +86,11 @@ public static class ConfigManager
             file.Refresh();
         }
 
-        using (var stream = file.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+        using (var stream = file.Open(FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
         using (var reader = new StreamReader(stream))
         {
             var json = reader.ReadToEnd();
-            Hotfix = JsonConvert.DeserializeObject<HotfixContainer>(json)!;
+            Hotfix = JsonConvert.DeserializeObject<HotfixContainer>(json) ?? throw new InvalidDataException($"Empty configuration: {HotfixFilePath}");
         }
 
         foreach (var version in verList)
@@ -107,9 +107,28 @@ public static class ConfigManager
         var json = JsonConvert.SerializeObject(data, Formatting.Indented);
         var file = new FileInfo(path);
         if (file.Directory is { Exists: false }) file.Directory.Create();
-        using var stream = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.ReadWrite);
-        using var writer = new StreamWriter(stream);
-        writer.Write(json);
+        var temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            {
+                using var writer = new StreamWriter(stream, leaveOpen: true);
+                writer.Write(json);
+                writer.Flush();
+                stream.Flush(true);
+            }
+            for (var attempt = 0; ; attempt++)
+            {
+                try
+                {
+                    if (File.Exists(path)) File.Replace(temporary, path, path + ".bak", true);
+                    else File.Move(temporary, path);
+                    break;
+                }
+                catch (IOException) when (attempt < 50) { Thread.Sleep(100); }
+            }
+        }
+        finally { if (File.Exists(temporary)) File.Delete(temporary); }
     }
 
     public static void InitDirectories()

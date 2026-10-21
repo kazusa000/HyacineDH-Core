@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using Spectre.Console;
+using System.Collections.Concurrent;
 
 namespace HyacineCore.Server.Util;
 
@@ -8,9 +9,62 @@ public class Logger(string moduleName)
     private static FileInfo? _logFile;
     private static FileInfo? _debugLogFile;
     private static readonly object Lock = new();
+    private static readonly object HeadlessCallbacks = new();
+    private static readonly BlockingCollection<(string Message, LoggerLevel Level)> HeadlessLogs = new(8192);
+    private static int DroppedDebugLogs;
+    private static readonly Lazy<Thread> HeadlessWriter = new(() =>
+    {
+        var thread = new Thread(WriteHeadlessLogs) { IsBackground = true, Name = "headless-log-writer" };
+        thread.Start();
+        return thread;
+    });
+
+    private static void WriteHeadlessLogs()
+    {
+        foreach (var first in HeadlessLogs.GetConsumingEnumerable())
+        {
+            var batch = new List<(string Message, LoggerLevel Level)> { first };
+            while (batch.Count < 256 && HeadlessLogs.TryTake(out var next)) batch.Add(next);
+            var dropped = Interlocked.Exchange(ref DroppedDebugLogs, 0);
+            if (dropped > 0) batch.Add(($"[{DateTime.Now:HH:mm:ss}] [Logger] [WARN] Dropped {dropped} debug entries while the headless log queue was full.", LoggerLevel.WARN));
+            // Redirected services do not need terminal rendering or prompt redraw.
+            // Batch file opens and console writes so request threads never wait on them.
+            var all = string.Join(Environment.NewLine, batch.Select(x => x.Message));
+            try { Console.WriteLine(all); } catch (IOException) { }
+            WriteToDebugFile(all);
+            var regular = string.Join(Environment.NewLine, batch.Where(x => x.Level != LoggerLevel.DEBUG).Select(x => x.Message));
+            if (regular.Length > 0) WriteToFile(regular);
+        }
+    }
+
+    public static void Flush()
+    {
+        if (!HeadlessWriter.IsValueCreated) return;
+        lock (HeadlessCallbacks) HeadlessLogs.CompleteAdding();
+        HeadlessWriter.Value.Join(TimeSpan.FromSeconds(10));
+    }
 
     public void Log(string message, LoggerLevel level)
     {
+        if (Console.IsOutputRedirected)
+        {
+            var prefix = ShouldShowTimeInLog() ? $"[{DateTime.Now:HH:mm:ss}] " : "";
+            var line = $"{prefix}[{moduleName}] [{level}] {message}";
+            lock (HeadlessCallbacks)
+            {
+                PluginEventCommon.InvokeOnConsoleLog(line);
+                _ = HeadlessWriter.Value;
+                if (!HeadlessLogs.IsAddingCompleted)
+                {
+                    if (level == LoggerLevel.DEBUG)
+                    {
+                        if (!HeadlessLogs.TryAdd((line, level))) Interlocked.Increment(ref DroppedDebugLogs);
+                    }
+                    else HeadlessLogs.Add((line, level));
+                }
+            }
+            return;
+        }
         lock (Lock)
         {
             var now = DateTime.Now;
