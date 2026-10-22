@@ -10,8 +10,8 @@ public class HandlerGetTutorialCsReq : Handler
     public override async Task OnHandle(Connection connection, byte[] header, byte[] data)
     {
         await SendPlayerData(connection);
-        if (ConfigManager.Config.ServerOption.EnableMission) // If missions are enabled
-            await connection.SendPacket(new PacketGetTutorialScRsp(connection.Player!));
+        // Always answer: the 4.1 client keeps the scene unready while this request is pending.
+        await connection.SendPacket(new PacketGetTutorialScRsp(connection.Player!));
     }
 
     private async Task SendPlayerData(Connection connection)
