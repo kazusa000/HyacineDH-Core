@@ -821,7 +821,11 @@ public enum MissionFinishTypeEnum
 
     ChenLingGameBoyFinish = 380300,
     ChenLingGameBoyFinishChallengeCnt = 380301,
-    ChenLingBattleFinishStage = 380302, // 4.1 data uses it by name only; numeric value assumed
+    // The names below come from 4.1 data, which refers to finish types by name only; values are assumed.
+    ChenLingBattleFinishStage = 380302,
+    ChenLingBattleActivatedPrivilegeCnt = 380303,
+    ChenLingBattleFinalStagePassWaveCnt = 380304,
+    ChenLingBattleReachConquerLevel = 380305,
 
     ChestMonsterFinish = 380400,
 
@@ -829,6 +833,7 @@ public enum MissionFinishTypeEnum
 
     LimaoNewsFinishOfficeEvent = 380600,
     LimaoNewsFinishFirstEnterMainPage = 380601,
+    LimaoNewsFinishClientMessage = 380602,
 
     LocalLegendFinishBattleTarget = 380700,
     LocalLegendFinishBattleTargetCnt = 380701,
@@ -846,4 +851,8 @@ public enum MissionFinishTypeEnum
 
     RogueTournFinishWithMiracleCountListContain = 380900,
     RogueTournFinishWithOpenedChestCount = 380901,
+    RogueTournPersonaFinishWithRoomAttributeCnt = 380902,
+    RogueTournPersonaFinishWithRoomCardNumAndLevelCnt = 380903,
+    RogueTournPersonaFinishWithStyleIDCnt = 380904,
+    RogueTournPersonaHandBookUnlockedGiftCnt = 380905,
 }

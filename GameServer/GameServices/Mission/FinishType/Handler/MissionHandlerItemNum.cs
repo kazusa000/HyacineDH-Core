@@ -14,7 +14,9 @@ public class MissionHandlerItemNum : MissionFinishTypeHandler
         var item = player.InventoryManager?.GetItem(info.ParamInt1);
         if (item != null) count += item.Count;
 
-        if (count == info.Progress)
+        // Holding at least the target is enough: items can arrive several at a time (e.g. from finish
+        // actions) before this is evaluated, so the count may skip past the exact number.
+        if (count >= info.Progress)
         {
             await player.MissionManager!.FinishSubMission(info.ID);
         }

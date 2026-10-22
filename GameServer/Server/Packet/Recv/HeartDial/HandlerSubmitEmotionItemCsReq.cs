@@ -16,8 +16,14 @@ public class HandlerSubmitEmotionItemCsReq : Handler
         GameData.HeartDialScriptData.TryGetValue((int)req.ScriptId, out var scriptData);
         if (scriptData != null)
         {
+            // Submitting the missing emotion moves the script on to the next step of its StepList
+            // (e.g. Missing -> Normal), which is what HeartDialScriptListStep missions wait for.
+            connection.Player!.HeartDialData!.DialList.TryGetValue((int)req.ScriptId, out var current);
+            var steps = scriptData.StepList;
+            var at = current != null ? steps.IndexOf(current.StepType) : 0;
+            var next = steps.Count == 0 ? HeartDialStepTypeEnum.Normal : steps[Math.Min(Math.Max(at, 0) + 1, steps.Count - 1)];
             var info = connection.Player!.HeartDialData!.ChangeScriptEmotion((int)req.ScriptId,
-                scriptData.DefaultEmoType, HeartDialStepTypeEnum.UnLock);
+                scriptData.DefaultEmoType, next);
             await connection.Player!.SendPacket(
                 new PacketHeartDialScriptChangeScNotify(HeartDialUnlockStatus.UnlockAll, info));
             await connection.Player!.MissionManager!.HandleFinishType(MissionFinishTypeEnum.HeartDialScriptListStep);

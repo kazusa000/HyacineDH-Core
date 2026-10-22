@@ -38,6 +38,10 @@ public class SceneData : BaseDatabaseDataHelper
         []; // Dictionary<FloorId, Dictionary<GroupId, Dictionary<Key, Value>>>
 
     [SugarColumn(IsJson = true, ColumnDataType = "TEXT")]
+    public Dictionary<int, Dictionary<int, int>> GroupStateData { get; set; } =
+        []; // Dictionary<FloorId, Dictionary<GroupId, State>>
+
+    [SugarColumn(IsJson = true, ColumnDataType = "TEXT")]
     public SceneEraFlipperData EraFlipperData { get; set; } = new();
 
     [SugarColumn(IsJson = true, ColumnDataType = "TEXT")]

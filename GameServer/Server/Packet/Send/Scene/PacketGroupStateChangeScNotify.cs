@@ -6,7 +6,12 @@ namespace HyacineCore.Server.GameServer.Server.Packet.Send.Scene;
 
 public class PacketGroupStateChangeScNotify : BasePacket
 {
-    public PacketGroupStateChangeScNotify(int entryId, int groupId, PropStateEnum propState) : base(
+    public PacketGroupStateChangeScNotify(int entryId, int groupId, PropStateEnum propState) : this(entryId,
+        groupId, (int)propState)
+    {
+    }
+
+    public PacketGroupStateChangeScNotify(int entryId, int groupId, int state) : base(
         CmdIds.GroupStateChangeScNotify)
     {
         var notify = new GroupStateChangeScNotify
@@ -15,7 +20,7 @@ public class PacketGroupStateChangeScNotify : BasePacket
             {
                 EntryId = (uint)entryId,
                 GroupId = (uint)groupId,
-                GroupState = (uint)propState
+                GroupState = (uint)state
             }
         };
 

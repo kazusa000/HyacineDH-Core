@@ -2,6 +2,7 @@
 using HyacineCore.Server.Data.Excel;
 using HyacineCore.Server.Database.Avatar;
 using HyacineCore.Server.Database.Inventory;
+using HyacineCore.Server.Enums.Mission;
 using HyacineCore.Server.GameServer.Game.Player;
 using HyacineCore.Server.GameServer.Game.Scene;
 using HyacineCore.Server.GameServer.Game.Scene.Entity;
@@ -59,6 +60,7 @@ public class BattleManager(PlayerInstance player) : BasePlayerManager(player)
         foreach (var prop in propList)
         {
             await Player.SceneInstance!.RemoveEntity(prop);
+            await Player.MissionManager!.HandleFinishType(MissionFinishTypeEnum.PropDestruct, prop);
             if (prop.Excel.IsMpRecover)
             {
                 await Player.LineupManager!.GainMp(2, true, SyncLineupReason.SyncReasonMpAddPropHit);

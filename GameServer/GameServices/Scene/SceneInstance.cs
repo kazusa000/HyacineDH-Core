@@ -135,6 +135,9 @@ public class SceneInstance
                     SaveData = customData.Value
                 });
 
+        foreach (var (groupId, state) in Player.SceneData!.GroupStateData.GetValueOrDefault(FloorId) ?? [])
+            sceneInfo.GroupStateList.Add(new SceneGroupState { GroupId = (uint)groupId, State = (uint)state });
+
         Player.SceneData!.FloorSavedData.TryGetValue(FloorId, out var floorData);
 
         foreach (var value in FloorInfo?.FloorSavedValue ?? [])
@@ -295,6 +298,25 @@ public class SceneInstance
                 await UpdateFloorSavedValue(key, value);
 
         return res;
+    }
+
+    // Group state: one number per group that group graphs request (RequestGroupStateChange) and branch on.
+    public async ValueTask UpdateGroupState(int groupId, int state)
+    {
+        if (!Player.SceneData!.GroupStateData.TryGetValue(FloorId, out var groupData))
+        {
+            groupData = [];
+            Player.SceneData.GroupStateData[FloorId] = groupData;
+        }
+
+        groupData[groupId] = state;
+        await Player.SendPacket(new PacketGroupStateChangeScNotify(EntryId, groupId, state));
+        await Player.MissionManager!.HandleFinishType(MissionFinishTypeEnum.GroupState);
+    }
+
+    public int GetGroupState(int groupId)
+    {
+        return Player.SceneData!.GroupStateData.GetValueOrDefault(FloorId)?.GetValueOrDefault(groupId) ?? 0;
     }
 
     public async ValueTask UpdateFloorSavedValue(string name, int value)

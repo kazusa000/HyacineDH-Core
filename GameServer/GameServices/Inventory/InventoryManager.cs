@@ -212,6 +212,7 @@ public class InventoryManager(PlayerInstance player) : BasePlayerManager(player)
         if (notify) await Player.SendPacket(new PacketScenePlaneEventScNotify(clone));
 
         Player.MissionManager?.HandleFinishType(MissionFinishTypeEnum.GetItem, itemData.ToProto());
+        Player.MissionManager?.HandleFinishType(MissionFinishTypeEnum.ItemNum);
 
         return returnRaw ? itemData : clone;
     }
@@ -382,6 +383,7 @@ public class InventoryManager(PlayerInstance player) : BasePlayerManager(player)
             case ItemMainTypeEnum.Material:
             case ItemMainTypeEnum.Pet:
             case ItemMainTypeEnum.Usable:
+            case ItemMainTypeEnum.Mission: // PutItem keeps mission items with the materials
                 return Data.MaterialItems.Find(x => x.ItemId == itemId);
             case ItemMainTypeEnum.Equipment:
                 return uniqueId > 0

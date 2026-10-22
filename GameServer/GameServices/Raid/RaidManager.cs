@@ -292,6 +292,7 @@ public class RaidManager : BasePlayerManager
         {
             Player.SceneData!.PropTimelineData.Remove(floorId);
             Player.SceneData!.GroupPropertyData.Remove(floorId);
+            Player.SceneData!.GroupStateData.Remove(floorId);
             Player.SceneData!.FloorTargetPuzzleGroupData.Remove(floorId);
             Player.SceneData!.FloorSavedData.Remove(floorId);
             Player.SceneData!.ScenePropData.Remove(floorId);
