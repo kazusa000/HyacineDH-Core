@@ -175,6 +175,7 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
             }
 
         if (SkipSubMissionList.Contains(missionId)) await FinishSubMission(missionId);
+        if (mission.SubMissionInfo != null) await PuzzleFallback.OnSubMissionAccepted(Player, mission.SubMissionInfo);
 
         if (mission.SubMissionInfo?.LevelFloorID == Player.SceneInstance?.FloorId)
             if (mission.SubMissionInfo?.GroupIDList != null)

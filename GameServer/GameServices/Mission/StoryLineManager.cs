@@ -12,6 +12,8 @@ namespace HyacineCore.Server.GameServer.Game.Mission;
 
 public class StoryLineManager(PlayerInstance player) : BasePlayerManager(player)
 {
+    private static readonly Logger Log = new("StoryLine");
+
     public StoryLineData StoryLineData { get; set; } =
         DatabaseHelper.Instance!.GetInstanceOrCreateNew<StoryLineData>(player.Uid);
 
@@ -31,10 +33,23 @@ public class StoryLineManager(PlayerInstance player) : BasePlayerManager(player)
             await InitStoryLine(storyLine.StoryLineID);
             return;
         }
+
+        // A line another line switched away from is suspended. When no line is active and the suspended
+        // line's show range is still open, the player is back in it.
+        foreach (var storyLineId in StoryLineData.RunningStoryLines.Keys.ToList())
+        {
+            if (GameData.StoryLineData.GetValueOrDefault(storyLineId)?.ShowRange() is not { } range) continue;
+            if (missions.GetSubMissionStatus(range.From) == MissionPhaseEnum.None) continue;
+            if (missions.GetSubMissionStatus(range.To) == MissionPhaseEnum.Finish) continue;
+            Log.Info($"resume story line {storyLineId}");
+            await InitStoryLine(storyLineId);
+            return;
+        }
     }
 
     public async ValueTask InitStoryLine(int storyLineId, int entryId = 0, int anchorGroupId = 0, int anchorId = 0)
     {
+        Log.Info($"enter story line {storyLineId}");
         if (StoryLineData.CurStoryLineId != 0) await FinishStoryLine(entryId, anchorGroupId, anchorId, false);
         GameData.StoryLineData.TryGetValue(storyLineId, out var storyExcel);
         if (storyExcel == null) return;
@@ -129,6 +144,7 @@ public class StoryLineManager(PlayerInstance player) : BasePlayerManager(player)
     public async ValueTask LeaveStoryLine(bool tp)
     {
         if (StoryLineData.CurStoryLineId == 0) return;
+        Log.Info($"leave story line {StoryLineData.CurStoryLineId}");
 
         GameData.StoryLineData.TryGetValue(StoryLineData.CurStoryLineId, out var storyExcel);
         if (storyExcel == null) return;
@@ -183,6 +199,7 @@ public class StoryLineManager(PlayerInstance player) : BasePlayerManager(player)
     public async ValueTask FinishStoryLine(int entryId = 0, int anchorGroupId = 0, int anchorId = 0, bool tp = true)
     {
         if (StoryLineData.CurStoryLineId == 0) return;
+        Log.Info($"leave story line {StoryLineData.CurStoryLineId}");
 
         GameData.StoryLineData.TryGetValue(StoryLineData.CurStoryLineId, out var storyExcel);
         if (storyExcel == null) return;

@@ -165,6 +165,8 @@ public class EntityMonster(
         // TODO: Rogue support
         // call mission handler
         await Scene.Player.MissionManager!.HandleFinishType(MissionFinishTypeEnum.KillMonster, this);
+        await Scene.Player.MissionManager.HandleFinishType(MissionFinishTypeEnum.KillMonsterGroupList, this);
+        await Scene.Player.MissionManager.HandleFinishType(MissionFinishTypeEnum.KillMonsterList, this);
         await Scene.RemoveEntity(this, sendPacket);
         return dropItems;
     }

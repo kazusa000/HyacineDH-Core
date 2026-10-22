@@ -3,6 +3,7 @@ using HyacineCore.Server.Database.Scene;
 using HyacineCore.Server.Enums.Mission;
 using HyacineCore.Server.Enums.Scene;
 using HyacineCore.Server.GameServer.Game.Drop;
+using HyacineCore.Server.GameServer.Game.Mission;
 using HyacineCore.Server.GameServer.Game.Scene;
 using HyacineCore.Server.GameServer.Game.Scene.Entity;
 using HyacineCore.Server.GameServer.Server.Packet.Send.Lineup;
@@ -39,7 +40,11 @@ public partial class PlayerInstance
         SceneInstance.Entities.TryGetValue(propEntityId, out var entity);
         if (entity is not EntityProp prop) return null;
         GameData.InteractConfigData.TryGetValue(interactId, out var config);
-        if (config == null || config.SrcState != prop.State) return prop;
+        if (config == null || config.SrcState != prop.State)
+        {
+            await PuzzleFallback.OnGroupInteract(this, prop.GroupId);
+            return prop;
+        }
         var oldState = prop.State;
         await prop.SetState(config.TargetState);
         var newState = prop.State;
@@ -213,6 +218,7 @@ public partial class PlayerInstance
 
         if (prop.PropInfo.IsLevelBtn) await prop.SetState(PropStateEnum.Closed);
 
+        await PuzzleFallback.OnGroupInteract(this, prop.GroupId);
         return prop;
     }
 

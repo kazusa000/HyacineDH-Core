@@ -82,6 +82,8 @@ public class ServerOption
     public int StartTrailblazerLevel { get; set; } = 1;
     public bool AutoUpgradeWorldLevel { get; set; } = true;
     public bool EnableMission { get; set; } = true; // experimental
+    // Puzzle steps whose server-side logic is missing from the data finish when the player interacts with the puzzle group.
+    public bool PuzzleFallback { get; set; } = true;
     public bool EnableMessage { get; set; } = true; // works independently from mission
     public bool EnableQuest { get; set; } = true; // experimental
     public bool AutoLightSection { get; set; } = true;

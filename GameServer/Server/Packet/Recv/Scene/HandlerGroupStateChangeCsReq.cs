@@ -1,3 +1,4 @@
+using HyacineCore.Server.GameServer.Game.Mission;
 using HyacineCore.Server.GameServer.Server.Packet.Send.Scene;
 using HyacineCore.Server.Kcp;
 using HyacineCore.Server.Proto;
@@ -20,6 +21,7 @@ public class HandlerGroupStateChangeCsReq : Handler
         }
 
         await scene.UpdateGroupState((int)info.GroupId, (int)info.GroupState);
+        await PuzzleFallback.OnGroupInteract(connection.Player!, (int)info.GroupId);
         await connection.SendPacket(new PacketGroupStateChangeScRsp(Retcode.RetSucc, info));
     }
 }
