@@ -70,7 +70,7 @@ public class DispatchRoutes : ControllerBase
                 Name = Config.GameServer.GameServerId,
                 Title = Config.GameServer.GameServerName,
                 DispatchUrl = $"{Config.HttpServer.GetDisplayAddress()}/query_gateway",
-                EnvType = "9",
+                EnvType = Config.GameServer.EnvType,
                 DisplayName = Config.GameServer.GameServerName
             });
         }

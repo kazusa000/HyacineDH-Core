@@ -44,6 +44,9 @@ public class GameServerConfig
     public string GameServerId { get; set; } = "hyacine_core";
     public string GameServerName { get; set; } = "HyacineCore";
     public string GameServerDescription { get; set; } = "A re-implementation of StarRail server";
+    // Region env_type in query_dispatch. Official OS prod regions use "2"; "9" makes the
+    // 4.1 global client switch to CN beta SDK endpoints (api-beta-sdk / hkrpg_cn).
+    public string EnvType { get; set; } = "2";
     public bool UsePacketEncryption { get; set; } = true;
 
     public string GetDisplayAddress()
