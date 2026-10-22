@@ -3,8 +3,10 @@ using HyacineCore.Server.Data;
 using HyacineCore.Server.Data.Config;
 using HyacineCore.Server.Data.Config.Scene;
 using HyacineCore.Server.Enums.Mission;
+using HyacineCore.Server.Enums.Scene;
 using HyacineCore.Server.GameServer.Game.Player;
 using HyacineCore.Server.Util;
+using Newtonsoft.Json.Linq;
 
 namespace HyacineCore.Server.GameServer.Game.Mission;
 
@@ -55,9 +57,11 @@ public static class PuzzleFallback
         }
     }
 
-    // Minigame steps the server cannot evaluate are skipped when accepted.
-    // A floor saved value that no group graph mentions, no sub-mission finish action sets and the server's
-    // own interaction rules (FSV_ML*, JG_ML*) do not cover can never be reached, e.g. a choice made inside a
+    // Minigame steps the server cannot evaluate are skipped when accepted, and so are puzzle steps nothing
+    // can reach.
+    // A floor saved value that no sub-mission finish action sets, the server's own interaction rules
+    // (FSV_ML*, JG_ML*) do not cover and whose puzzle groups have no server-side prop to interact with
+    // (client-side or entity-less groups) can never be reached, e.g. a choice made inside a
     // raid's stripped graph. Such a step is skipped as soon as it is accepted; of a choice pair, the first
     // one taken wins and its delSubMission removes the other.
     public static async ValueTask OnSubMissionAccepted(PlayerInstance player, SubMissionInfo info)
@@ -72,32 +76,72 @@ public static class PuzzleFallback
             return;
         }
 
-        if (info.FinishType != MissionFinishTypeEnum.FloorSavedValue) return;
-        if (info.ParamStr1.StartsWith("FSV_ML") || info.ParamStr1.StartsWith("JG_ML")) return;
-        if (MissionSetValues.Value.Contains((info.ParamStr1, info.ParamInt1))) return;
-        if (PuzzleGroups(GameData.GetFloorInfo(info.LevelFloorID), info).Count > 0) return;
-
-        Log.Warn($"sub-mission {info.ID}: nothing can set {info.ParamStr1}={info.ParamInt1} " +
-                 $"on floor {info.LevelFloorID}, skipping it");
-        if (!player.SceneData!.FloorSavedData.TryGetValue(info.LevelFloorID, out var values))
+        var floor = GameData.GetFloorInfo(info.LevelFloorID);
+        switch (info.FinishType)
         {
-            values = [];
-            player.SceneData.FloorSavedData[info.LevelFloorID] = values;
+            case MissionFinishTypeEnum.FloorSavedValue:
+                if (info.ParamStr1.StartsWith("FSV_ML") || info.ParamStr1.StartsWith("JG_ML")) return;
+                if (MissionSetValues.Value.Contains((info.LevelFloorID.ToString(), info.ParamStr1, info.ParamInt1))) return;
+                if (PuzzleGroups(floor, info).Any(id => Interactable(floor, id))) return;
+
+                Log.Warn($"sub-mission {info.ID}: nothing can set {info.ParamStr1}={info.ParamInt1} " +
+                         $"on floor {info.LevelFloorID}, skipping it");
+                if (!player.SceneData!.FloorSavedData.TryGetValue(info.LevelFloorID, out var values))
+                {
+                    values = [];
+                    player.SceneData.FloorSavedData[info.LevelFloorID] = values;
+                }
+
+                values[info.ParamStr1] = info.ParamInt1;
+                break;
+            case MissionFinishTypeEnum.GroupPropertyValue:
+                if (Interactable(floor, info.ParamInt1) || ClientSetsGroupProperty(floor, info.ParamInt1, info.ParamStr1))
+                    return;
+                Log.Warn($"sub-mission {info.ID}: nothing can set group property {info.ParamInt1}/{info.ParamStr1}=" +
+                         $"{info.ParamInt2} on floor {info.LevelFloorID}, skipping it");
+                break;
+            case MissionFinishTypeEnum.TimeLineSetState:
+                if (Interactable(floor, info.ParamInt1)) return;
+                Log.Warn($"sub-mission {info.ID}: group {info.ParamInt1} has nothing to interact with for timeline " +
+                         $"{info.ParamStr1} on floor {info.LevelFloorID}, skipping it");
+                break;
+            default:
+                return;
         }
 
-        values[info.ParamStr1] = info.ParamInt1;
         await player.MissionManager.FinishSubMission(info.ID);
+    }
+
+    private static bool Interactable(FloorInfo? floor, int groupId)
+    {
+        // Same props the scene loader spawns.
+        return floor?.Groups.GetValueOrDefault(groupId) is { LoadSide: GroupLoadSideEnum.Server } group &&
+               group.PropList.Any(p => !p.IsClientOnly && !p.IsDelete && p.LoadOnInitial);
+    }
+
+    // Client graphs set server group properties with RequestSetServerGroupProperty (UpdateGroupPropertyCsReq).
+    private static bool ClientSetsGroupProperty(FloorInfo? floor, int groupId, string name)
+    {
+        return (floor?.Groups.Values ?? []).Any(g =>
+        {
+            if (string.IsNullOrEmpty(g.LevelGraph)) return false;
+            var text = ReadGraph(g.LevelGraph);
+            if (!text.Contains("RequestSetServerGroupProperty") || !text.Contains($"\"{name}\"")) return false;
+            return JToken.Parse(text).SelectTokens("$..*").OfType<JObject>()
+                .Where(t => (string?)t["$type"] == "RPG.GameCore.RequestSetServerGroupProperty")
+                .Any(t => (int?)t["GroupID"] == groupId && (string?)t["DynamicName"]?["Value"] == name);
+        });
     }
 
     // Activity minigames the story drops into; the server implements none of their finish types.
     private static readonly string[] MinigamePrefixes = ["TarotBook", "FiveDim", "DiceCombat", "LimaoNews"];
 
-    private static readonly Lazy<HashSet<(string, int)>> MissionSetValues = new(() =>
+    private static readonly Lazy<HashSet<(string, string, int)>> MissionSetValues = new(() =>
         GameData.SubMissionInfoData.Values
             .SelectMany(x => x.SubMissionInfo?.FinishActionList ?? [])
             .Where(x => x.FinishActionType == FinishActionTypeEnum.SetFloorSavedValue &&
                         x.FinishActionParaString.Count >= 4 && int.TryParse(x.FinishActionParaString[3], out _))
-            .Select(x => (x.FinishActionParaString[2], int.Parse(x.FinishActionParaString[3])))
+            .Select(x => (x.FinishActionParaString[1], x.FinishActionParaString[2], int.Parse(x.FinishActionParaString[3])))
             .ToHashSet());
 
     // Groups whose graph mentions the saved value; without any, the groups the sub-mission lists.

@@ -16,12 +16,11 @@ public class StoryLineEntityLoader(SceneInstance scene) : SceneEntityLoader(scen
         if (Scene.IsLoaded) return;
 
         var storyId = Scene.Player.StoryLineManager?.StoryLineData.CurStoryLineId ?? 0;
-        if (storyId == 0) return;
 
+        // Floors a story line has no entry for (raid floors, for one) show their default dimension.
         GameData.StoryLineFloorDataData.TryGetValue(storyId, out var floorData);
-        if (floorData == null) return;
-
-        floorData.TryGetValue(Scene.FloorInfo?.FloorID ?? 0, out var floorInfo);
+        StoryLineFloorDataExcel? floorInfo = null;
+        floorData?.TryGetValue(Scene.FloorInfo?.FloorID ?? 0, out floorInfo);
         floorInfo ??= new StoryLineFloorDataExcel { DimensionID = 0 }; // Default
 
         var dim = Scene.FloorInfo?.DimensionList.Find(d => d.ID == floorInfo.DimensionID);
