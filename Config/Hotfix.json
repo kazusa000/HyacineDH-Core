@@ -28,6 +28,13 @@
       "ExResourceUrl": "",
       "LuaUrl": "",
       "IfixUrl": ""
+    },
+    "OS4.1.0": {
+      "AssetBundleUrl": "asb/V4.1Live/output_14504659_df6899d37050_793c14248bd13b",
+      "ExAssetBundleUrl": "asb/V4.1Live/output_14330634_9f94276bbd6f_4632207e49e301",
+      "ExResourceUrl": "design_data/V4.1Live/output_14504368_3b735c1522fd_0d57d81f08c80d",
+      "LuaUrl": "lua/V4.1Live/output_14479249_f430c1c9a865_6efaf678594bc5",
+      "IfixUrl": "ifix/V4.1Live/output_14504659_87b4d1bd9c79_36618be9638515"
     }
   }
 }
