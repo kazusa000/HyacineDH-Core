@@ -821,6 +821,7 @@ public enum MissionFinishTypeEnum
 
     ChenLingGameBoyFinish = 380300,
     ChenLingGameBoyFinishChallengeCnt = 380301,
+    ChenLingBattleFinishStage = 380302, // 4.1 data uses it by name only; numeric value assumed
 
     ChestMonsterFinish = 380400,
 

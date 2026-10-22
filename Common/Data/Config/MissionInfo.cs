@@ -27,6 +27,9 @@ public class SubMissionInfo
 
     public List<int>? TakeParamIntList { get; set; } = []; // the mission's prerequisites
 
+    // CustomValue take condition in current data: triples of (value name, value, sub-mission that set it).
+    public List<string>? TakeParamStrList { get; set; } = [];
+
     [JsonConverter(typeof(StringEnumConverter))]
     public MissionFinishTypeEnum FinishType { get; set; }
 
@@ -45,6 +48,7 @@ public class SubMissionInfo
 public class CustomValueInfo
 {
     public int Index { get; set; }
+    public string Name { get; set; } = "";
     public List<int> ValidValueParamList { get; set; } = [];
 }
 

@@ -450,7 +450,25 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
         if (mainMission == null) return;
 
         foreach (var mission in mainMission.MissionInfo?.SubMissionList ?? [])
-            if (mission.TakeType == SubMissionTakeTypeEnum.CustomValue)
+            if (mission.TakeType == SubMissionTakeTypeEnum.CustomValue && mission.TakeParamStrList?.Count >= 3)
+            {
+                // Any (name, value, setter) triple matching what the reporting sub-mission set accepts it.
+                // The value is looked up by name, or by the name's slot in the main mission's value list.
+                for (var i = 0; i + 2 < mission.TakeParamStrList.Count; i += 3)
+                {
+                    var name = mission.TakeParamStrList[i];
+                    if (!int.TryParse(mission.TakeParamStrList[i + 1], out var expected) ||
+                        !int.TryParse(mission.TakeParamStrList[i + 2], out var setter) || setter != missionId)
+                        continue;
+                    var slot = mainMission.MissionInfo?.MissionCustomValueList.Find(x => x.Name == name)?.Index;
+                    var value = values.Find(x => x.CBBMFAIEGDP == name) ??
+                                (slot == null ? null : values.Find(x => x.Index == slot));
+                    if (value == null || value.CustomValue != expected) continue;
+                    await AcceptSubMission(mission.ID);
+                    break;
+                }
+            }
+            else if (mission.TakeType == SubMissionTakeTypeEnum.CustomValue)
             {
                 var index = 0;
                 var accept = false;
