@@ -8,19 +8,34 @@ public class SceneTaskTrigger(PlayerInstance player)
 {
     public PlayerInstance Player { get; } = player;
 
-    public void TriggerFloor(int planeId, int floorId)
+    private readonly HashSet<int> _triggeringFloors = [];
+
+    // Runs the level graphs of the floor's loaded groups. Groups whose load conditions are not met do
+    // not exist for the client either, and their graphs may move the player (EnterMap) back into
+    // this same floor, which used to recurse until the stack overflowed.
+    public void TriggerFloor(int planeId, int floorId, IReadOnlyCollection<int>? loadedGroups = null)
     {
         GameData.GetFloorInfo(planeId, floorId, out var floor);
         if (floor == null) return;
+        loadedGroups ??= Player.SceneInstance?.FloorId == floorId ? Player.SceneInstance.Groups : null;
+        if (loadedGroups == null) return;
+        if (!_triggeringFloors.Add(floorId)) return;
 
-        foreach (var group in floor.Groups.Values)
+        try
         {
-            if (group.LevelGraphConfig == null) continue;
-            foreach (var task in group.LevelGraphConfig.OnInitSequece)
-                Player.TaskManager?.LevelTask.TriggerInitAct(task, new SubMissionData(0), group);
+            foreach (var group in floor.Groups.Values)
+            {
+                if (group.LevelGraphConfig == null || !loadedGroups.Contains(group.Id)) continue;
+                foreach (var task in group.LevelGraphConfig.OnInitSequece)
+                    Player.TaskManager?.LevelTask.TriggerInitAct(task, new SubMissionData(0), group);
 
-            foreach (var task in group.LevelGraphConfig.OnStartSequece)
-                Player.TaskManager?.LevelTask.TriggerStartAct(task, new SubMissionData(0), group);
+                foreach (var task in group.LevelGraphConfig.OnStartSequece)
+                    Player.TaskManager?.LevelTask.TriggerStartAct(task, new SubMissionData(0), group);
+            }
+        }
+        finally
+        {
+            _triggeringFloors.Remove(floorId);
         }
     }
 
