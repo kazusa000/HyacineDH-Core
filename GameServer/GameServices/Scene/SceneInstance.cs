@@ -57,7 +57,9 @@ public class SceneInstance
             EntryId = (uint)EntryId,
             SceneMissionInfo = new MissionStatusBySceneInfo(),
             DimensionId = (uint)(EntityLoader is StoryLineEntityLoader loader ? loader.DimensionId : 0),
-            GameStoryLineId = (uint)(Player.StoryLineManager?.StoryLineData.CurStoryLineId ?? 0)
+            GameStoryLineId = (uint)(Player.StoryLineManager?.StoryLineData.CurStoryLineId ?? 0),
+            // The 4.1 client never reports movement while this stays 0 (see HyacineGo)
+            ClientPosVersion = 1
         };
 
         var playerGroupInfo = new SceneEntityGroupInfo(); // avatar group
