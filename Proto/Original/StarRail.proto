@@ -9537,9 +9537,9 @@ message JDNNCKMJCPO {
 }
 
 message VectorSnapshot {
-    int32 x = 1;
-    int32 y = 2;
-    int32 z = 3;
+    sint32 x = 1;
+    sint32 y = 2;
+    sint32 z = 3;
 }
 
 message MotionInfoSnapshot {
@@ -13947,9 +13947,9 @@ message HIAPAIPIODD {
 }
 
 message Vector {
-    int32 x = 10;
-    int32 z = 14;
-    int32 y = 7;
+    sint32 x = 10;
+    sint32 z = 14;
+    sint32 y = 7;
 }
 
 message MotionInfo {
@@ -14046,7 +14046,7 @@ message JOGMADAMFNI {
 
 message JCKPLANILKJ {
     uint32 key = 7;
-    int32 value = 9;
+    sint32 value = 9;
 }
 
 message EquipRelic {

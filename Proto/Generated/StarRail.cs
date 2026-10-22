@@ -108270,15 +108270,15 @@ namespace HyacineCore.Server.Proto {
     #else
       if (X != 0) {
         output.WriteRawTag(8);
-        output.WriteInt32(X);
+        output.WriteSInt32(X);
       }
       if (Y != 0) {
         output.WriteRawTag(16);
-        output.WriteInt32(Y);
+        output.WriteSInt32(Y);
       }
       if (Z != 0) {
         output.WriteRawTag(24);
-        output.WriteInt32(Z);
+        output.WriteSInt32(Z);
       }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(output);
@@ -108292,15 +108292,15 @@ namespace HyacineCore.Server.Proto {
     void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
       if (X != 0) {
         output.WriteRawTag(8);
-        output.WriteInt32(X);
+        output.WriteSInt32(X);
       }
       if (Y != 0) {
         output.WriteRawTag(16);
-        output.WriteInt32(Y);
+        output.WriteSInt32(Y);
       }
       if (Z != 0) {
         output.WriteRawTag(24);
-        output.WriteInt32(Z);
+        output.WriteSInt32(Z);
       }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(ref output);
@@ -108313,13 +108313,13 @@ namespace HyacineCore.Server.Proto {
     public int CalculateSize() {
       int size = 0;
       if (X != 0) {
-        size += 1 + pb::CodedOutputStream.ComputeInt32Size(X);
+        size += 1 + pb::CodedOutputStream.ComputeSInt32Size(X);
       }
       if (Y != 0) {
-        size += 1 + pb::CodedOutputStream.ComputeInt32Size(Y);
+        size += 1 + pb::CodedOutputStream.ComputeSInt32Size(Y);
       }
       if (Z != 0) {
-        size += 1 + pb::CodedOutputStream.ComputeInt32Size(Z);
+        size += 1 + pb::CodedOutputStream.ComputeSInt32Size(Z);
       }
       if (_unknownFields != null) {
         size += _unknownFields.CalculateSize();
@@ -108362,15 +108362,15 @@ namespace HyacineCore.Server.Proto {
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
           case 8: {
-            X = input.ReadInt32();
+            X = input.ReadSInt32();
             break;
           }
           case 16: {
-            Y = input.ReadInt32();
+            Y = input.ReadSInt32();
             break;
           }
           case 24: {
-            Z = input.ReadInt32();
+            Z = input.ReadSInt32();
             break;
           }
         }
@@ -108393,15 +108393,15 @@ namespace HyacineCore.Server.Proto {
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
           case 8: {
-            X = input.ReadInt32();
+            X = input.ReadSInt32();
             break;
           }
           case 16: {
-            Y = input.ReadInt32();
+            Y = input.ReadSInt32();
             break;
           }
           case 24: {
-            Z = input.ReadInt32();
+            Z = input.ReadSInt32();
             break;
           }
         }
@@ -309991,15 +309991,15 @@ namespace HyacineCore.Server.Proto {
     #else
       if (Y != 0) {
         output.WriteRawTag(56);
-        output.WriteInt32(Y);
+        output.WriteSInt32(Y);
       }
       if (X != 0) {
         output.WriteRawTag(80);
-        output.WriteInt32(X);
+        output.WriteSInt32(X);
       }
       if (Z != 0) {
         output.WriteRawTag(112);
-        output.WriteInt32(Z);
+        output.WriteSInt32(Z);
       }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(output);
@@ -310013,15 +310013,15 @@ namespace HyacineCore.Server.Proto {
     void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
       if (Y != 0) {
         output.WriteRawTag(56);
-        output.WriteInt32(Y);
+        output.WriteSInt32(Y);
       }
       if (X != 0) {
         output.WriteRawTag(80);
-        output.WriteInt32(X);
+        output.WriteSInt32(X);
       }
       if (Z != 0) {
         output.WriteRawTag(112);
-        output.WriteInt32(Z);
+        output.WriteSInt32(Z);
       }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(ref output);
@@ -310034,13 +310034,13 @@ namespace HyacineCore.Server.Proto {
     public int CalculateSize() {
       int size = 0;
       if (X != 0) {
-        size += 1 + pb::CodedOutputStream.ComputeInt32Size(X);
+        size += 1 + pb::CodedOutputStream.ComputeSInt32Size(X);
       }
       if (Z != 0) {
-        size += 1 + pb::CodedOutputStream.ComputeInt32Size(Z);
+        size += 1 + pb::CodedOutputStream.ComputeSInt32Size(Z);
       }
       if (Y != 0) {
-        size += 1 + pb::CodedOutputStream.ComputeInt32Size(Y);
+        size += 1 + pb::CodedOutputStream.ComputeSInt32Size(Y);
       }
       if (_unknownFields != null) {
         size += _unknownFields.CalculateSize();
@@ -310083,15 +310083,15 @@ namespace HyacineCore.Server.Proto {
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
             break;
           case 56: {
-            Y = input.ReadInt32();
+            Y = input.ReadSInt32();
             break;
           }
           case 80: {
-            X = input.ReadInt32();
+            X = input.ReadSInt32();
             break;
           }
           case 112: {
-            Z = input.ReadInt32();
+            Z = input.ReadSInt32();
             break;
           }
         }
@@ -310114,15 +310114,15 @@ namespace HyacineCore.Server.Proto {
             _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
             break;
           case 56: {
-            Y = input.ReadInt32();
+            Y = input.ReadSInt32();
             break;
           }
           case 80: {
-            X = input.ReadInt32();
+            X = input.ReadSInt32();
             break;
           }
           case 112: {
-            Z = input.ReadInt32();
+            Z = input.ReadSInt32();
             break;
           }
         }
@@ -314234,7 +314234,7 @@ namespace HyacineCore.Server.Proto {
       }
       if (Value != 0) {
         output.WriteRawTag(72);
-        output.WriteInt32(Value);
+        output.WriteSInt32(Value);
       }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(output);
@@ -314252,7 +314252,7 @@ namespace HyacineCore.Server.Proto {
       }
       if (Value != 0) {
         output.WriteRawTag(72);
-        output.WriteInt32(Value);
+        output.WriteSInt32(Value);
       }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(ref output);
@@ -314268,7 +314268,7 @@ namespace HyacineCore.Server.Proto {
         size += 1 + pb::CodedOutputStream.ComputeUInt32Size(Key);
       }
       if (Value != 0) {
-        size += 1 + pb::CodedOutputStream.ComputeInt32Size(Value);
+        size += 1 + pb::CodedOutputStream.ComputeSInt32Size(Value);
       }
       if (_unknownFields != null) {
         size += _unknownFields.CalculateSize();
@@ -314312,7 +314312,7 @@ namespace HyacineCore.Server.Proto {
             break;
           }
           case 72: {
-            Value = input.ReadInt32();
+            Value = input.ReadSInt32();
             break;
           }
         }
@@ -314339,7 +314339,7 @@ namespace HyacineCore.Server.Proto {
             break;
           }
           case 72: {
-            Value = input.ReadInt32();
+            Value = input.ReadSInt32();
             break;
           }
         }
