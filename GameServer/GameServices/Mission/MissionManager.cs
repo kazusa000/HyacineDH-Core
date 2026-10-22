@@ -313,8 +313,8 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
 
         // handle reward
         await HandleSubMissionReward(missionId);
-        //Player.StoryLineManager!.CheckIfEnterStoryLine();
-        //Player.StoryLineManager!.CheckIfFinishStoryLine();
+        await Player.StoryLineManager!.CheckIfFinishStoryLine();
+        await Player.StoryLineManager!.CheckIfEnterStoryLine();
 
         PluginEvent.InvokeOnPlayerFinishSubMission(Player, missionId);
     }

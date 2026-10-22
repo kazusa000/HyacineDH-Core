@@ -19,12 +19,18 @@ public class StoryLineManager(PlayerInstance player) : BasePlayerManager(player)
     {
         if (StoryLineData.CurStoryLineId != 0) return;
 
+        // Every story line begins when a sub-mission is taken (SubMissionTaken) and ends when one is finished.
+        // Lines already started are either suspended in RunningStoryLines (ChangeStoryLine switches back to
+        // them) or ended, so only lines never entered qualify.
+        var missions = Player.MissionManager!;
         foreach (var storyLine in GameData.StoryLineData.Values)
-            if (Player.MissionManager!.GetSubMissionStatus(storyLine.BeginCondition.Param) == MissionPhaseEnum.Finish)
-            {
-                await InitStoryLine(storyLine.StoryLineID);
-                return;
-            }
+        {
+            if (missions.GetSubMissionStatus(storyLine.BeginCondition.Param) == MissionPhaseEnum.None) continue;
+            if (missions.GetSubMissionStatus(storyLine.EndCondition.Param) == MissionPhaseEnum.Finish) continue;
+            if (StoryLineData.RunningStoryLines.ContainsKey(storyLine.StoryLineID)) continue;
+            await InitStoryLine(storyLine.StoryLineID);
+            return;
+        }
     }
 
     public async ValueTask InitStoryLine(int storyLineId, int entryId = 0, int anchorGroupId = 0, int anchorId = 0)
@@ -198,6 +204,10 @@ public class StoryLineManager(PlayerInstance player) : BasePlayerManager(player)
             };
         StoryLineData.CurStoryLineId = 0;
 
+        // where to return to, read before it is reset below
+        var (oldPlaneId, oldFloorId, oldEntryId) =
+            (StoryLineData.OldPlaneId, StoryLineData.OldFloorId, StoryLineData.OldEntryId);
+        var (oldPos, oldRot) = (StoryLineData.OldPos, StoryLineData.OldRot);
         StoryLineData.OldPlaneId = 0;
         StoryLineData.OldEntryId = 0;
         StoryLineData.OldFloorId = 0;
@@ -213,8 +223,7 @@ public class StoryLineManager(PlayerInstance player) : BasePlayerManager(player)
             if (entryId > 0)
                 await Player.EnterSceneByEntranceId(entryId, anchorGroupId, anchorId, true);
             else
-                await Player.LoadScene(StoryLineData.OldPlaneId, StoryLineData.OldFloorId, StoryLineData.OldEntryId,
-                    StoryLineData.OldPos, StoryLineData.OldRot, true);
+                await Player.LoadScene(oldPlaneId, oldFloorId, oldEntryId, oldPos, oldRot, true);
         }
     }
 
