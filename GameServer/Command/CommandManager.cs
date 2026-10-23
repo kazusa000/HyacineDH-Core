@@ -146,6 +146,13 @@ public class CommandManager
 
     public void HandleCommand(string input, ICommandSender sender)
     {
+        _ = HandleCommandAsync(input, sender);
+    }
+
+    // Completes when the command has finished, so callers that wait (MUIP) see its whole reply and run
+    // commands one after another.
+    public async Task HandleCommandAsync(string input, ICommandSender sender)
+    {
         try
         {
             var cmd = input.Split(' ')[0];
@@ -241,7 +248,7 @@ public class CommandManager
 
                     if (!canRun) continue;
                     isFound = true;
-                    method.Invoke(command, [arg]);
+                    await Invoked(method.Invoke(command, [arg]));
                     break;
                 }
 
@@ -252,7 +259,7 @@ public class CommandManager
                     var attr = method.GetCustomAttribute<CommandDefaultAttribute>();
                     if (attr == null) continue;
                     isFound = true;
-                    method.Invoke(command, [arg]);
+                    await Invoked(method.Invoke(command, [arg]));
                     break;
                 }
 
@@ -269,5 +276,15 @@ public class CommandManager
             Logger.Error(I18NManager.Translate("Game.Command.Notice.InternalError"), e);
             sender.SendMsg(I18NManager.Translate("Game.Command.Notice.InternalError"));
         }
+    }
+
+    private static Task Invoked(object? result)
+    {
+        return result switch
+        {
+            ValueTask task => task.AsTask(),
+            Task task => task,
+            _ => Task.CompletedTask
+        };
     }
 }

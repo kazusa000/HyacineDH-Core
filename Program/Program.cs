@@ -271,7 +271,7 @@ public class EntryPoint
 
         CommandExecutor.OnRunCommand += (sender, e) => { CommandManager.HandleCommand(e, sender); };
 
-        MuipManager.OnExecuteCommand += CommandManager.HandleCommand;
+        MuipManager.OnExecuteCommand += CommandManager.HandleCommandAsync;
         MuipManager.OnGetServerInformation += x =>
         {
             foreach (var con in Listener.Connections.Values)

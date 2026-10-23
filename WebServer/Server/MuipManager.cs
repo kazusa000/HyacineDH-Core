@@ -20,7 +20,7 @@ namespace HyacineCore.Server.WebServer.Server;
 
 public static class MuipManager
 {
-    public delegate void ExecuteCommandDelegate(string message, MuipCommandSender sender);
+    public delegate Task ExecuteCommandDelegate(string message, MuipCommandSender sender);
 
     public delegate void GetPlayerStatusDelegate(int uid, out PlayerStatusEnum status,
         out PlayerSubStatusEnum subStatus);
@@ -160,7 +160,7 @@ public static class MuipManager
                 new MuipCommandSender(session, msg => { returnStr += msg + "\r\n"; })
                 {
                     SenderUid = targetUid
-                }));
+                }) ?? Task.CompletedTask);
 
             sync.Wait();
 
