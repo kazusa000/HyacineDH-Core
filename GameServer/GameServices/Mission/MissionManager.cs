@@ -302,8 +302,13 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
             // Player.ChangeAvatarPathType(8001, Enums.Avatar.MultiPathAvatarTypeEnum.Knight);
             var list = Player.LineupManager!.GetCurLineup()!.BaseAvatars!
                 .Select(x => x.SpecialAvatarId > 0 ? x.SpecialAvatarId : x.BaseAvatarId).ToList();
-            list[list.IndexOf(8001)] = Player.Data.CurrentGender == Gender.Man ? 1008003 : 1008004;
-            Player.LineupManager!.SetExtraLineup(ExtraLineupType.LineupHeliobus, list);
+            // The Trailblazer may be missing from the lineup, e.g. after the story was skipped forward.
+            var trailblazer = list.IndexOf(8001);
+            if (trailblazer >= 0)
+            {
+                list[trailblazer] = Player.Data.CurrentGender == Gender.Man ? 1008003 : 1008004;
+                Player.LineupManager!.SetExtraLineup(ExtraLineupType.LineupHeliobus, list);
+            }
         }
 
         if (missionId == 103040103)
