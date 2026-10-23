@@ -181,7 +181,9 @@ public class CommandManager
                 {
                     sender.SendMsg(I18NManager.Translate("Game.Command.Notice.TargetNotFound",
                         sender.GetSender().ToString()));
-                    return;
+                    // An admin (MUIP) may run commands that need no player, such as account create; the rest
+                    // report the missing player themselves.
+                    if (!sender.HasPermission("command.others")) return;
                 }
             }
 
