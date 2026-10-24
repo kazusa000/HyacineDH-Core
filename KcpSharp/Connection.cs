@@ -141,6 +141,9 @@ public class HyacineCoreConnection
         }
     }
 
+    // Sees every packet sent to this client; the story runner uses it to check what a real client would receive.
+    public Action<BasePacket>? PacketObserver { get; set; }
+
     public async Task SendPacket(BasePacket packet)
     {
         // Test
@@ -149,6 +152,8 @@ public class HyacineCoreConnection
             Logger.Debug("Tried to send packet with missing cmd id!");
             return;
         }
+
+        PacketObserver?.Invoke(packet);
 
         // DO NOT REMOVE (unless we find a way to validate code before sending to client which I don't think we can)
         if (BannedPackets.Contains(packet.CmdId)) return;
