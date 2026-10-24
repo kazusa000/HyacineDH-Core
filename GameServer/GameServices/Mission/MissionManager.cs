@@ -188,6 +188,12 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
         return sync;
     }
 
+    public List<int> GetAllFinishedMissionIds()
+    {
+        return Data.FinishedSubMissionIds.Concat(Data.FinishedMainMissionIds).Where(x => x > 0).Distinct()
+            .OrderBy(x => x).ToList();
+    }
+
     public async ValueTask FinishMainMission(int missionId)
     {
         if (!ConfigManager.Config.ServerOption.EnableMission) return;
@@ -195,6 +201,7 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
         if (Data.GetMainMissionStatus(missionId) != MissionPhaseEnum.Accept) return;
         Data.SetMainMissionStatus(missionId, MissionPhaseEnum.Finish);
         var sync = new MissionSync();
+        var finishedMissionIds = new List<int> { missionId };
         sync.FinishedMainMissionIdList.Add((uint)missionId);
         // get next main mission
         foreach (var mission in mainMission.SubMissionIds)
@@ -202,6 +209,7 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
                 if (Data.GetSubMissionStatus(mission) != MissionPhaseEnum.Finish)
                 {
                     Data.SetSubMissionStatus(mission, MissionPhaseEnum.Finish);
+                    finishedMissionIds.Add(mission);
                     sync.MissionList.Add(new Proto.Mission
                     {
                         Id = (uint)mission,
@@ -214,6 +222,7 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
 
         await Player.SendPacket(new PacketPlayerSyncScNotify(sync));
         await Player.SendPacket(new PacketStartFinishMainMissionScNotify(missionId));
+        await Player.SendPacket(new PacketFinishedMissionScNotify(finishedMissionIds));
         await HandleMissionReward(missionId);
         await HandleFinishType(MissionFinishTypeEnum.FinishMission);
 
@@ -277,6 +286,7 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
 
         await Player.SendPacket(new PacketPlayerSyncScNotify(sync));
         await Player.SendPacket(new PacketStartFinishSubMissionScNotify(missionId));
+        await Player.SendPacket(new PacketFinishedMissionScNotify([missionId]));
 
         if (mainMission.MissionInfo != null)
             await HandleFinishAction(mainMission.MissionInfo, missionId);

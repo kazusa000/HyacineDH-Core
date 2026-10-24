@@ -77,6 +77,9 @@ public class HyacineCoreConnection
 
         var packetName = LogMap.GetValueOrDefault(opcode, "UnknownPacket");
         var output = $"{sendOrRecv}: {packetName}({opcode})";
+        // Unknown command numbers have no message type to decode; keep the bytes to identify them later.
+        if (!LogMap.ContainsKey(opcode))
+            output += $" payload={Convert.ToHexString(payload, 0, Math.Min(payload.Length, 256))}";
         var showJsonText = logOption.DebugShowJsonText && !logOption.DisableLogDetailPacket;
 
         if (showJsonText)

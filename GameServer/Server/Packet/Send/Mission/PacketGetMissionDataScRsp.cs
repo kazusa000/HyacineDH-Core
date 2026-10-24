@@ -10,9 +10,14 @@ public class PacketGetMissionDataScRsp : BasePacket
 {
     public PacketGetMissionDataScRsp(PlayerInstance player) : base(CmdIds.GetMissionDataScRsp)
     {
+        // A finished or unset tracked mission falls back to a running one (as March7thHoney 4.2).
+        var data = player.MissionManager!.Data;
+        if (player.MissionManager.GetMainMissionStatus(data.TrackingMainMissionId) != MissionPhaseEnum.Accept)
+            data.TrackingMainMissionId = GameData.MainMissionData.Keys.FirstOrDefault(x =>
+                player.MissionManager.GetMainMissionStatus(x) == MissionPhaseEnum.Accept);
         var proto = new GetMissionDataScRsp
         {
-            TrackMissionId = (uint)player.MissionManager!.Data.TrackingMainMissionId
+            TrackMissionId = (uint)data.TrackingMainMissionId
         };
 
         foreach (var mission in GameData.MainMissionData.Keys)

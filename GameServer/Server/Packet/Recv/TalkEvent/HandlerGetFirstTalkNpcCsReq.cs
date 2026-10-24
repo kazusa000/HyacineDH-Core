@@ -1,4 +1,6 @@
-﻿using HyacineCore.Server.Kcp;
+﻿using HyacineCore.Server.GameServer.Server.Packet.Send.TalkEvent;
+using HyacineCore.Server.Kcp;
+using HyacineCore.Server.Proto;
 
 namespace HyacineCore.Server.GameServer.Server.Packet.Recv.TalkEvent;
 
@@ -7,6 +9,7 @@ public class HandlerGetFirstTalkNpcCsReq : Handler
 {
     public override async Task OnHandle(Connection connection, byte[] header, byte[] data)
     {
-        await connection.SendPacket(CmdIds.GetFirstTalkNpcScRsp);
+        var req = GetFirstTalkNpcCsReq.Parser.ParseFrom(data);
+        await connection.SendPacket(new PacketGetFirstTalkNpcScRsp(req));
     }
 }

@@ -1,6 +1,7 @@
 ﻿using HyacineCore.Server.Data;
 using HyacineCore.Server.Enums.Scene;
 using HyacineCore.Server.GameServer.Game.Player;
+using HyacineCore.Server.GameServer.Game.Scene.Entity;
 using HyacineCore.Server.Kcp;
 using HyacineCore.Server.Proto;
 using HyacineCore.Server.Util;
@@ -83,6 +84,28 @@ public class PacketGetSceneMapInfoScRsp : BasePacket
                 };
                 mazeMap.MazePropList.Add(mazeProp);
             }
+
+            // Saved and live prop states plus the floor's saved values, as March7thHoney 4.2 sends them; the map
+            // only knew the teleport anchors before.
+            void AddProp(int groupId, int propId, PropStateEnum state)
+            {
+                if (mazeMap.MazePropList.Any(x => x.GroupId == (uint)groupId && x.ConfigId == (uint)propId)) return;
+                mazeMap.MazePropList.Add(new MazePropState
+                    { GroupId = (uint)groupId, ConfigId = (uint)propId, State = (uint)state });
+            }
+
+            if (player.SceneInstance?.FloorId == (int)floorId)
+                foreach (var prop in player.SceneInstance.Entities.Values.OfType<EntityProp>())
+                    AddProp(prop.GroupId, prop.InstId, prop.State);
+
+            if (player.SceneData!.ScenePropData.TryGetValue((int)floorId, out var floorProps))
+                foreach (var (groupId, props) in floorProps)
+                foreach (var prop in props)
+                    AddProp(groupId, prop.PropId, prop.State);
+
+            if (player.SceneData.FloorSavedData.TryGetValue((int)floorId, out var savedValues))
+                foreach (var (key, value) in savedValues)
+                    mazeMap.FloorSavedData[key] = value;
 
             if (!ConfigManager.Config.ServerOption.AutoLightSection)
             {
