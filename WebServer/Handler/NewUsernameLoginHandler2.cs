@@ -10,14 +10,14 @@ public class NewUsernameLoginHandler2
     public ContentResult Handle(string account, string password)
     {
         NewLoginResJson res = new();
-        var accountData = AccountData.GetAccountByUserName(account);
+        var accountData = AccountHelper.GetLoginAccount(account);
 
         if (accountData == null)
         {
             if (ConfigManager.Config.ServerOption.AutoCreateUser)
             {
-                AccountHelper.CreateAccount(account, 0);
-                accountData = AccountData.GetAccountByUserName(account);
+                AccountHelper.CreateAccount(account, ConfigManager.Config.ServerOption.LocalAccountUid);
+                accountData = AccountHelper.GetLoginAccount(account);
             }
             else
             {

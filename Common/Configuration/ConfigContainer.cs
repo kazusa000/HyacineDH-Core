@@ -94,6 +94,7 @@ public class ServerOption
     public WelcomeMailOption WelcomeMail { get; set; } = new();
     public ServerProfile ServerProfile { get; set; } = new();
     public bool AutoCreateUser { get; set; } = true;
+    public int LocalAccountUid { get; set; } = 0; // >0: every username login signs in to this one account
     public LogOption LogOption { get; set; } = new();
     public ServerConfig ServerConfig { get; set; } = new();
     public ChallengePeakOption ChallengePeak { get; set; } = new();

@@ -28,4 +28,12 @@ public static class AccountHelper
         };
         DatabaseHelper.SaveInstance(account);
     }
+
+    // The client encrypts the username differently on every login, so a local single-player server can pin all
+    // username logins to one account (ServerOption.LocalAccountUid) instead of creating a new one each time.
+    public static AccountData? GetLoginAccount(string username)
+    {
+        var uid = ConfigManager.Config.ServerOption.LocalAccountUid;
+        return uid > 0 ? AccountData.GetAccountByUid(uid) : AccountData.GetAccountByUserName(username);
+    }
 }
