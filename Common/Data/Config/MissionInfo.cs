@@ -49,6 +49,7 @@ public class CustomValueInfo
 {
     public int Index { get; set; }
     public string Name { get; set; } = "";
+    public bool IsRange { get; set; }
     public List<int> ValidValueParamList { get; set; } = [];
 }
 

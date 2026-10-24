@@ -22,11 +22,7 @@ public class PacketGetMissionDataScRsp : BasePacket
 
         foreach (var mission in GameData.MainMissionData.Keys)
             if (player.MissionManager!.GetMainMissionStatus(mission) == MissionPhaseEnum.Accept)
-                proto.MainMissionList.Add(new MainMission
-                {
-                    Id = (uint)mission,
-                    Status = MissionStatus.MissionDoing
-                });
+                proto.MainMissionList.Add(player.MissionManager.MainMissionToProto(mission));
 
         foreach (var mission in GameData.SubMissionInfoData.Keys.Concat(GameData.SubMissionData.Keys))
             if (player.MissionManager!.GetSubMissionStatus(mission) == MissionPhaseEnum.Accept)

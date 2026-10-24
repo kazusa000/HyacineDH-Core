@@ -379,6 +379,8 @@ public partial class PlayerInstance
         }
 
         // TODO: Sanify check
+        if (SceneInstance != null && SceneInstance.FloorId != floorId)
+            new MapRotationManager(this).Deactivate();
         Data.Pos = pos;
         Data.Rot = rot;
         var notSendMove = true;

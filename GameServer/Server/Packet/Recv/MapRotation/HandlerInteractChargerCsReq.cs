@@ -11,8 +11,6 @@ public class HandlerInteractChargerCsReq : Handler
     {
         var req = InteractChargerCsReq.Parser.ParseFrom(data);
 
-        connection.Player!.ChargerNum = 5;
-        await connection.SendPacket(new PacketInteractChargerScRsp(req.ChargerInfo));
-        await connection.SendPacket(new PacketUpdateEnergyScNotify(connection.Player!.ChargerNum, 5));
+        await new HyacineCore.Server.GameServer.Game.Scene.MapRotationManager(connection.Player!).Charge(req);
     }
 }

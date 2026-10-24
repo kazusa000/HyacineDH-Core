@@ -11,7 +11,6 @@ public class HandlerDeployRotaterCsReq : Handler
     {
         var req = DeployRotatorCsReq.Parser.ParseFrom(data);
 
-        connection.Player!.ChargerNum--;
-        await connection.SendPacket(new PacketDeployRotaterScRsp(req.RotaterData, connection.Player!.ChargerNum, 5));
+        await new HyacineCore.Server.GameServer.Game.Scene.MapRotationManager(connection.Player!).Deploy(req);
     }
 }

@@ -10,6 +10,6 @@ public class HandlerEnterMapRotationRegionCsReq : Handler
     public override async Task OnHandle(Connection connection, byte[] header, byte[] data)
     {
         var req = EnterMapRotationRegionCsReq.Parser.ParseFrom(data);
-        await connection.SendPacket(new PacketEnterMapRotationRegionScRsp(req.Motion));
+        await new HyacineCore.Server.GameServer.Game.Scene.MapRotationManager(connection.Player!).Enter(req);
     }
 }

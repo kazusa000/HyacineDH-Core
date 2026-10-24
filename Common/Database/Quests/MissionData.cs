@@ -29,6 +29,10 @@ public class MissionData : BaseDatabaseDataHelper
 
     public int TrackingMainMissionId { get; set; }
 
+    // Nullable for databases created before client-reported story choices were saved.
+    [SugarColumn(IsNullable = true, IsJson = true, ColumnDataType = "TEXT")]
+    public Dictionary<int, Dictionary<string, uint>> CustomValues { get; set; } = [];
+
     public MissionPhaseEnum GetMainMissionStatus(int missionId)
     {
         if (FinishedMainMissionIds.Contains(missionId)) return MissionPhaseEnum.Finish;

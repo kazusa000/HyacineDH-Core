@@ -93,6 +93,7 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
 
         GameData.MainMissionData.TryGetValue(missionId, out var mission);
         if (mission == null) return [];
+        Data.CustomValues?.Remove(missionId);
         MissionSync sync = new();
 
         foreach (var subMission in mission.SubMissionIds)
@@ -117,6 +118,7 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
     {
         if (!ConfigManager.Config.ServerOption.EnableMission) return;
         Data.SetMainMissionStatus(missionId, MissionPhaseEnum.None);
+        Data.CustomValues?.Remove(missionId);
 
         GameData.MainMissionData.TryGetValue(missionId, out var mission);
         if (mission == null) return;
@@ -465,6 +467,9 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
         GameData.MainMissionData.TryGetValue(mainMissionId, out var mainMission);
         if (mainMission == null) return;
 
+        if (StoreCustomValues(mainMissionId, values) != Retcode.RetSucc) return;
+        if (Data.GetMainMissionStatus(mainMissionId) != MissionPhaseEnum.Accept) return;
+
         foreach (var mission in mainMission.MissionInfo?.SubMissionList ?? [])
             if (mission.TakeType == SubMissionTakeTypeEnum.CustomValue && mission.TakeParamStrList?.Count >= 3)
             {
@@ -523,6 +528,84 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
 
                 if (accept) await AcceptSubMission(mission.ID);
             }
+    }
+
+    public Proto.MainMission MainMissionToProto(int missionId)
+    {
+        var result = new Proto.MainMission
+        {
+            Id = (uint)missionId,
+            Status = GetMainMissionStatus(missionId).ToProto()
+        };
+        Data.CustomValues ??= [];
+        var saved = Data.CustomValues.GetValueOrDefault(missionId);
+        var definitions = GameData.MainMissionData.GetValueOrDefault(missionId)?.MissionInfo.MissionCustomValueList ?? [];
+        foreach (var definition in definitions)
+            result.CustomValueList.Add(new MissionCustomValue
+            {
+                Index = (uint)definition.Index,
+                CBBMFAIEGDP = definition.Name,
+                CustomValue = saved?.GetValueOrDefault(definition.Name) ?? 0
+            });
+        return result;
+    }
+
+    private Retcode StoreCustomValues(int mainMissionId, IEnumerable<MissionCustomValue> values)
+    {
+        if (!GameData.MainMissionData.TryGetValue(mainMissionId, out var main)) return Retcode.RetMissionNotExist;
+        if (Data.GetMainMissionStatus(mainMissionId) == MissionPhaseEnum.None) return Retcode.RetMissionNotDoing;
+        var changes = new Dictionary<string, uint>();
+        foreach (var value in values)
+        {
+            var definition = string.IsNullOrEmpty(value.CBBMFAIEGDP)
+                ? main.MissionInfo.MissionCustomValueList.Find(x => x.Index == value.Index)
+                : main.MissionInfo.MissionCustomValueList.Find(x => x.Name == value.CBBMFAIEGDP);
+            if (definition == null) return Retcode.RetMissionCustomValueNotValid;
+            var allowed = definition.ValidValueParamList;
+            if (value.CustomValue > int.MaxValue || (allowed.Count > 0 &&
+                (definition.IsRange && allowed.Count == 2
+                    ? value.CustomValue < allowed[0] || value.CustomValue > allowed[1]
+                    : !allowed.Contains((int)value.CustomValue))))
+                return Retcode.RetMissionCustomValueNotValid;
+            changes[definition.Name] = value.CustomValue;
+        }
+        Data.CustomValues ??= [];
+        if (!Data.CustomValues.TryGetValue(mainMissionId, out var saved))
+            Data.CustomValues[mainMissionId] = saved = [];
+        foreach (var change in changes) saved[change.Key] = change.Value;
+        DatabaseHelper.ToSaveUidList.SafeAdd(Player.Uid);
+        return Retcode.RetSucc;
+    }
+
+    public Retcode RecordTalkCustomValues(int subMissionId, IEnumerable<MissionCustomValue> values)
+    {
+        var sub = GetSubMissionInfo(subMissionId);
+        if (sub == null) return Retcode.RetMissionSubMissionNotMatch;
+        if (GetSubMissionStatus(subMissionId) == MissionPhaseEnum.None) return Retcode.RetMissionNotDoing;
+        return StoreCustomValues(sub.MainMissionID, values);
+    }
+
+    public async ValueTask<Retcode> UpdateCustomValue(int mainMissionId, string name, uint value)
+    {
+        if (string.IsNullOrEmpty(name)) return Retcode.RetMissionCustomValueNotValid;
+        var status = StoreCustomValues(mainMissionId, [new MissionCustomValue { CBBMFAIEGDP = name, CustomValue = value }]);
+        if (status != Retcode.RetSucc) return status;
+        if (Data.GetMainMissionStatus(mainMissionId) != MissionPhaseEnum.Accept) return Retcode.RetSucc;
+        // A standalone update has no setter sub-mission ID. Only evaluate branches whose setter
+        // has already finished; an unfinished talk must not accept a branch early.
+        var info = GameData.MainMissionData[mainMissionId].MissionInfo;
+        foreach (var mission in info.SubMissionList.Where(x => x.TakeType == SubMissionTakeTypeEnum.CustomValue))
+        {
+            var conditions = mission.TakeParamStrList ?? [];
+            for (var i = 0; i + 2 < conditions.Count; i += 3)
+                if (conditions[i] == name && uint.TryParse(conditions[i + 1], out var expected) && expected == value &&
+                    int.TryParse(conditions[i + 2], out var setter) && GetSubMissionStatus(setter) == MissionPhaseEnum.Finish)
+                {
+                    await AcceptSubMission(mission.ID);
+                    break;
+                }
+        }
+        return Retcode.RetSucc;
     }
 
     public async ValueTask AddMissionProgress(int missionId, int progress)

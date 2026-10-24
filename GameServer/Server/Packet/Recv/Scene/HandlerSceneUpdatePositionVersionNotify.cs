@@ -11,6 +11,8 @@ public class HandlerSceneUpdatePositionVersionNotify : Handler
     public override async Task OnHandle(Connection connection, byte[] header, byte[] data)
     {
         var req = SceneUpdatePositionVersionNotify.Parser.ParseFrom(data);
+        if (connection.Player?.SceneInstance is { } scene)
+            scene.ClientPosVersion = Math.Max(scene.ClientPosVersion, req.PosVersion);
         await connection.SendPacket(new PacketSceneUpdatePositionVersionNotify(req.PosVersion));
     }
 }

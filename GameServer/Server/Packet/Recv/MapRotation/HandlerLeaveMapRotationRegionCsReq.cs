@@ -7,6 +7,7 @@ public class HandlerLeaveMapRotationRegionCsReq : Handler
 {
     public override async Task OnHandle(Connection connection, byte[] header, byte[] data)
     {
-        await connection.SendPacket(CmdIds.LeaveMapRotationRegionScRsp);
+        var req = HyacineCore.Server.Proto.LeaveMapRotationRegionCsReq.Parser.ParseFrom(data);
+        await new HyacineCore.Server.GameServer.Game.Scene.MapRotationManager(connection.Player!).Leave(req);
     }
 }

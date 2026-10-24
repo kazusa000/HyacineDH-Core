@@ -12,11 +12,23 @@ public class HandlerFinishTalkMissionCsReq : Handler
         var req = FinishTalkMissionCsReq.Parser.ParseFrom(data);
         var player = connection.Player!;
 
-        await player.MissionManager!.HandleTalkStr(req.TalkStr);
+        var manager = player.MissionManager!;
+        var status = req.CustomValueList.Count == 0 ? Retcode.RetSucc :
+            manager.RecordTalkCustomValues((int)req.SubMissionId, req.CustomValueList);
+        if (status == Retcode.RetSucc)
+        {
+            await manager.HandleTalkStr(req.TalkStr);
 
-        if (req.CustomValueList != null && req.CustomValueList.Count > 0)
-            await player.MissionManager!.HandleCustomValue([.. req.CustomValueList], (int)req.SubMissionId);
+            if (req.CustomValueList.Count > 0)
+                await manager.HandleCustomValue([.. req.CustomValueList], (int)req.SubMissionId);
+        }
 
-        await connection.SendPacket(new PacketFinishTalkMissionScRsp(req.TalkStr));
+        var packet = new BasePacket(CmdIds.FinishTalkMissionScRsp);
+        packet.SetData(new FinishTalkMissionScRsp
+        {
+            Retcode = (uint)status, TalkStr = req.TalkStr, SubMissionId = req.SubMissionId,
+            CustomValueList = { req.CustomValueList }
+        });
+        await connection.SendPacket(packet);
     }
 }

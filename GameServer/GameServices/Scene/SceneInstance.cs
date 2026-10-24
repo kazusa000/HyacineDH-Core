@@ -20,6 +20,7 @@ namespace HyacineCore.Server.GameServer.Game.Scene;
 
 public class SceneInstance
 {
+    public uint ClientPosVersion { get; set; } = 1;
     #region Scene Details
 
     public EntityProp? GetNearestSpring(long minDistSq)
@@ -59,7 +60,7 @@ public class SceneInstance
             DimensionId = (uint)(EntityLoader is StoryLineEntityLoader loader ? loader.DimensionId : 0),
             GameStoryLineId = (uint)(Player.StoryLineManager?.StoryLineData.CurStoryLineId ?? 0),
             // The 4.1 client never reports movement while this stays 0 (see HyacineGo)
-            ClientPosVersion = 1
+            ClientPosVersion = ClientPosVersion
         };
 
         var playerGroupInfo = new SceneEntityGroupInfo(); // avatar group

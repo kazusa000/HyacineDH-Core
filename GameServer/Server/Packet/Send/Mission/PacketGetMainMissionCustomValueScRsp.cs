@@ -12,11 +12,7 @@ public class PacketGetMainMissionCustomValueScRsp : BasePacket
     {
         var proto = new GetMainMissionCustomValueScRsp();
         foreach (var mission in req.MainMissionIdList)
-            proto.MainMissionList.Add(new MainMission
-            {
-                Id = mission,
-                Status = player.MissionManager!.GetMainMissionStatus((int)mission).ToProto()
-            });
+            proto.MainMissionList.Add(player.MissionManager!.MainMissionToProto((int)mission));
 
         SetData(proto);
     }

@@ -47,6 +47,10 @@ public class SceneData : BaseDatabaseDataHelper
     [SugarColumn(IsJson = true, ColumnDataType = "TEXT")]
     public SceneRotatableRegionData RotatableRegionData { get; set; } = new();
 
+    // Floor -> active room selector and per-room protobuf snapshots. Older saves can have NULL.
+    [SugarColumn(IsNullable = true, IsJson = true, ColumnDataType = "TEXT")]
+    public Dictionary<int, MapRotationFloorData> MapRotationData { get; set; } = [];
+
     [SugarColumn(IsJson = true, ColumnDataType = "TEXT")]
     public Dictionary<int, int> FloorTargetPuzzleGroupData { get; set; } = new();
 
@@ -129,6 +133,12 @@ public class SceneRotatableRegionData
     public int Energy { get; set; }
     public int MaxEnergy { get; set; }
     public int RotateValue { get; set; }
+}
+
+public class MapRotationFloorData
+{
+    public string CurrentRoom { get; set; } = "";
+    public Dictionary<string, byte[]> Rooms { get; set; } = [];
 }
 
 public class ScenePropTimelineData
