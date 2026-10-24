@@ -9,9 +9,17 @@ public class PacketStartRaidScRsp : BasePacket
 {
     public PacketStartRaidScRsp(RaidRecord record, PlayerInstance player) : base(CmdIds.StartRaidScRsp)
     {
+        // The client loads the raid floor from this scene (RaidPlayerData); without it the screen stays black.
         var proto = new StartRaidScRsp
         {
-            Retcode = (uint)Retcode.RetSucc
+            Retcode = (uint)Retcode.RetSucc,
+            Scene = new EJFCPMHJLDO
+            {
+                RaidId = (uint)record.RaidId,
+                WorldLevel = (uint)record.WorldLevel,
+                Lineup = player.LineupManager!.GetCurLineup()!.ToProto(),
+                ODMPLKFPHGJ = player.SceneInstance!.ToProto()
+            }
         };
 
         SetData(proto);
