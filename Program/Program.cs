@@ -59,6 +59,16 @@ public class EntryPoint
             eventArgs.Cancel = true;
             Environment.Exit(0);
         };
+        // A hidden server has no console to press Ctrl+C in; scripts ask for a clean shutdown (players saved)
+        // by creating this file in the working directory.
+        var shutdownRequest = Path.Combine(Environment.CurrentDirectory, "shutdown.request");
+        _ = Task.Run(async () =>
+        {
+            while (!File.Exists(shutdownRequest)) await Task.Delay(1000);
+            File.Delete(shutdownRequest);
+            Logger.Info("Shutdown requested");
+            Environment.Exit(0);
+        });
         var time = DateTime.Now;
 
         // pack the old log
