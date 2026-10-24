@@ -10,7 +10,8 @@ namespace HyacineCore.Server.GameServer.Server.Packet.Send.Scene;
 public class PacketSceneGroupRefreshScNotify : BasePacket
 {
     public PacketSceneGroupRefreshScNotify(PlayerInstance player, List<BaseGameEntity>? addEntity = null,
-        List<BaseGameEntity>? removeEntity = null)
+        List<BaseGameEntity>? removeEntity = null,
+        SceneGroupRefreshType refreshType = SceneGroupRefreshType.Loaded)
         : base(CmdIds.SceneGroupRefreshScNotify)
     {
         var proto = new SceneGroupRefreshScNotify
@@ -25,7 +26,7 @@ public class PacketSceneGroupRefreshScNotify : BasePacket
             var group = new GroupRefreshInfo
             {
                 GroupId = (uint)e.GroupId,
-                RefreshType = SceneGroupRefreshType.Loaded
+                RefreshType = refreshType
             };
             group.RefreshEntity.Add(new SceneEntityRefreshInfo
             {
@@ -43,7 +44,7 @@ public class PacketSceneGroupRefreshScNotify : BasePacket
             var group = new GroupRefreshInfo
             {
                 GroupId = (uint)e.GroupId,
-                RefreshType = SceneGroupRefreshType.Loaded
+                RefreshType = refreshType
             };
             group.RefreshEntity.Add(new SceneEntityRefreshInfo
             {
@@ -62,8 +63,8 @@ public class PacketSceneGroupRefreshScNotify : BasePacket
     }
 
     public PacketSceneGroupRefreshScNotify(PlayerInstance player, BaseGameEntity? addEntity = null,
-        BaseGameEntity? removeEntity = null) :
-        this(player, addEntity == null ? [] : [addEntity], removeEntity == null ? [] : [removeEntity])
+        BaseGameEntity? removeEntity = null, SceneGroupRefreshType refreshType = SceneGroupRefreshType.Loaded) :
+        this(player, addEntity == null ? [] : [addEntity], removeEntity == null ? [] : [removeEntity], refreshType)
     {
     }
 

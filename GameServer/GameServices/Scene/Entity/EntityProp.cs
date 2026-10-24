@@ -62,12 +62,11 @@ public class EntityProp(SceneInstance scene, MazePropExcel excel, GroupInfo grou
         State = state;
         if (sendPacket)
         {
-            // SceneGroupRefreshScNotify only supports add/delete; for state updates we need to "replace" the entity
-            // so the client applies the new PropState.
-            if (EntityId != 0 && Scene.Entities.ContainsKey(EntityId))
-                await Scene.Player.SendPacket(new PacketSceneGroupRefreshScNotify(Scene.Player, addEntity: this, removeEntity: this));
-            else
-                await Scene.Player.SendPacket(new PacketSceneGroupRefreshScNotify(Scene.Player, this));
+            // Re-sending the entity with refresh type 3 updates its state in place (as March7thHoney 4.2 does).
+            // Deleting and re-adding it respawned the prop, so client state listeners never ran: a console
+            // switched to Open without playing its animation or opening the linked door (Chap02 SimpleDoor).
+            await Scene.Player.SendPacket(new PacketSceneGroupRefreshScNotify(Scene.Player, this, null,
+                SceneGroupRefreshType.Afibfmafncc));
         }
 
         // save
