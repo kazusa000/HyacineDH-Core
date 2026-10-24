@@ -443,11 +443,25 @@ public class EntryPoint
 
     private static void PerformCleanup()
     {
-        PluginManager.UnloadPlugins();
-        Listener.Connections.Values.ToList().ForEach(x => x.Stop());
-
+        // Save before anything else: shutting down right after a client disconnected ended the process
+        // without saving or flushing the log, and the progress since the last periodic save was lost.
         DatabaseHelper.SaveThread?.Interrupt();
-        DatabaseHelper.SaveDatabase();
+        TryCleanup("save", DatabaseHelper.SaveDatabase);
+        TryCleanup("plugins", PluginManager.UnloadPlugins);
+        TryCleanup("connections", () => Listener.Connections.Values.ToList().ForEach(x => x.Stop()));
+        TryCleanup("save", DatabaseHelper.SaveDatabase); // whatever logout handlers changed
+    }
+
+    private static void TryCleanup(string step, Action action)
+    {
+        try
+        {
+            action();
+        }
+        catch (Exception e)
+        {
+            Logger.Error($"Shutdown step {step} failed", e);
+        }
     }
 
     private static void GenerateLogMap()

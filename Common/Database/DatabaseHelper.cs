@@ -116,12 +116,19 @@ public class DatabaseHelper
 
         SaveThread = new Thread(() =>
         {
-            while (true)
+            try
             {
-                CalcSaveDatabase();
-                Thread.Sleep(100);
+                while (true)
+                {
+                    CalcSaveDatabase();
+                    Thread.Sleep(100);
+                }
             }
-        });
+            catch (ThreadInterruptedException)
+            {
+                // shutdown: the exit handler interrupts this thread and saves itself
+            }
+        }) { IsBackground = true };
         SaveThread.Start();
 
         LoadAllData = true;
@@ -316,6 +323,15 @@ public class DatabaseHelper
     }
 
     public void SaveDatabase() // per 5 min
+    {
+        // The periodic thread and the exit handler may save at the same time.
+        lock (SaveLock)
+            SaveDatabaseLocked();
+    }
+
+    private static readonly object SaveLock = new();
+
+    private void SaveDatabaseLocked()
     {
         try
         {
