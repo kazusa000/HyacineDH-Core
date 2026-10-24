@@ -165,7 +165,7 @@ public class HyacineCoreConnection
             // ignore
         }
 
-        if (packet.CmdId == CmdIds.SetClientPausedScRsp)
+        if (packet.CmdId == CmdIds.SetClientPausedScRsp && ConfigManager.Config.ServerOption.ClientWatermark)
         {
             BasePacket lData;
             switch (ConfigManager.Config.ServerOption.Language)
