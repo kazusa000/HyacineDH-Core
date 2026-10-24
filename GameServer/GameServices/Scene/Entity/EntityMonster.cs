@@ -157,17 +157,19 @@ public class EntityMonster(
     {
         IsAlive = false;
 
+        // A monster without drop data still dies: returning early left it in the scene and uncounted for missions.
         GameData.MonsterDropData.TryGetValue(MonsterData.ID * 10 + Scene.Player.Data.WorldLevel, out var dropData);
-        if (dropData == null) return [];
-        var dropItems = dropData.CalculateDrop();
-        await Scene.Player.InventoryManager!.AddItems(dropItems, sendPacket);
+        var dropItems = dropData?.CalculateDrop() ?? [];
+        if (dropItems.Count > 0) await Scene.Player.InventoryManager!.AddItems(dropItems, sendPacket);
 
         // TODO: Rogue support
         // call mission handler
         await Scene.Player.MissionManager!.HandleFinishType(MissionFinishTypeEnum.KillMonster, this);
         await Scene.Player.MissionManager.HandleFinishType(MissionFinishTypeEnum.KillMonsterGroupList, this);
         await Scene.Player.MissionManager.HandleFinishType(MissionFinishTypeEnum.KillMonsterList, this);
-        await Scene.RemoveEntity(this, sendPacket);
+        // The removal always goes to the client, also when the battle result sends the items: deleting the monster
+        // only after PVEBattleResultScRsp left it standing in the real client (as March7thHoney 4.2, before the result).
+        await Scene.RemoveEntity(this);
         return dropItems;
     }
 }

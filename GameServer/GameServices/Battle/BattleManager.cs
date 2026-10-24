@@ -308,16 +308,12 @@ public class BattleManager(PlayerInstance player) : BasePlayerManager(player)
         var teleportToAnchor = false;
         var minimumHp = 0;
         var dropItems = new List<ItemData>();
-        var removedSceneMonsters = new List<EntityMonster>();
         switch (req.EndStatus)
         {
             case BattleEndStatus.BattleEndWin:
                 // Drops
                 foreach (var monster in battle.EntityMonsters)
-                {
                     dropItems.AddRange(await monster.Kill(false));
-                    removedSceneMonsters.Add(monster);
-                }
                 // Spend stamina
                 if (battle.StaminaCost > 0) await Player.SpendStamina(battle.StaminaCost);
                 break;
@@ -385,9 +381,5 @@ public class BattleManager(PlayerInstance player) : BasePlayerManager(player)
             await Player.ActivityManager.TrialActivityInstance.EndActivity(TrialActivityStatus.Finish);
 
         await Player.SendPacket(new PacketPVEBattleResultScRsp(req, Player, battle));
-
-        // Some clients ignore scene refresh packets while in battle; resend the removals after battle result.
-        if (removedSceneMonsters.Count > 0 && Player.SceneInstance != null)
-            await Player.SendPacket(new PacketSceneGroupRefreshScNotify(Player, removeEntity: removedSceneMonsters.Cast<BaseGameEntity>().ToList()));
     }
 }
