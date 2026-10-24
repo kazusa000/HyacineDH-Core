@@ -32,13 +32,15 @@ public class CommandMission : ICommand
             return;
         }
 
-        if (arg.BasicArgs.Count < 1)
+        // BasicArgs starts with the subcommand itself.
+        var basicArgs = arg.GetMethodBasicArgs("finish");
+        if (basicArgs.Count < 1)
         {
             await arg.SendMsg(I18NManager.Translate("Game.Command.Notice.InvalidArguments"));
             return;
         }
 
-        if (!int.TryParse(arg.BasicArgs[0], out var missionId))
+        if (!int.TryParse(basicArgs[0], out var missionId))
         {
             await arg.SendMsg(I18NManager.Translate("Game.Command.Mission.InvalidMissionId"));
             return;
@@ -81,7 +83,8 @@ public class CommandMission : ICommand
             value.Add(m.ID);
         }
 
-        if ((arg.BasicArgs.Count == 1 && arg.BasicArgs[0] == "-all") || mission.Data.TrackingMainMissionId == 0)
+        var options = arg.GetMethodBasicArgs("running");
+        if ((options.Count == 1 && options[0] == "-all") || mission.Data.TrackingMainMissionId == 0)
         {
             //Show all the missions
             await ShowMissionList(mission, missionMap, arg);
@@ -156,13 +159,15 @@ public class CommandMission : ICommand
             return;
         }
 
-        if (arg.BasicArgs.Count < 1)
+        // BasicArgs starts with the subcommand itself.
+        var basicArgs = arg.GetMethodBasicArgs("reaccept");
+        if (basicArgs.Count < 1)
         {
             await arg.SendMsg(I18NManager.Translate("Game.Command.Notice.InvalidArguments"));
             return;
         }
 
-        if (!int.TryParse(arg.BasicArgs[0], out var missionId))
+        if (!int.TryParse(basicArgs[0], out var missionId))
         {
             await arg.SendMsg(I18NManager.Translate("Game.Command.Mission.InvalidMissionId"));
             return;
@@ -182,13 +187,15 @@ public class CommandMission : ICommand
             return;
         }
 
-        if (arg.BasicArgs.Count < 1)
+        // BasicArgs starts with the subcommand itself.
+        var basicArgs = arg.GetMethodBasicArgs("finishmain");
+        if (basicArgs.Count < 1)
         {
             await arg.SendMsg(I18NManager.Translate("Game.Command.Notice.InvalidArguments"));
             return;
         }
 
-        if (!int.TryParse(arg.BasicArgs[0], out var missionId))
+        if (!int.TryParse(basicArgs[0], out var missionId))
         {
             await arg.SendMsg(I18NManager.Translate("Game.Command.Mission.InvalidMissionId"));
             return;
