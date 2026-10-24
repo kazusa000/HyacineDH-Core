@@ -14,6 +14,11 @@ public class PacketSceneGroupRefreshScNotify : BasePacket
         SceneGroupRefreshType refreshType = SceneGroupRefreshType.Loaded)
         : base(CmdIds.SceneGroupRefreshScNotify)
     {
+        // The 4.x client ignores deletions sent as Loaded (a beaten monster stayed on the field and touching it
+        // again hung on the battle loading screen); March7thHoney 4.2 sends every deletion as an in-place update.
+        if (refreshType == SceneGroupRefreshType.Loaded && removeEntity is { Count: > 0 })
+            refreshType = SceneGroupRefreshType.Afibfmafncc;
+
         var proto = new SceneGroupRefreshScNotify
         {
             FloorId = (uint)player.Data.FloorId,
