@@ -1,5 +1,8 @@
 ﻿using HyacineCore.Server.Internationalization;
 
+using HyacineCore.Server.Data;
+using HyacineCore.Server.Util;
+
 namespace HyacineCore.Server.Command.Command.Cmd;
 
 [CommandInfo("relic", "Game.Command.Relic.Desc", "Game.Command.Relic.Usage")]
@@ -26,9 +29,19 @@ public class CommandRelic : ICommand
         arg.CharacterArgs.TryGetValue("l", out var levelStr);
         str ??= "1";
         levelStr ??= "0";
-        if (!int.TryParse(str, out var amount) || !int.TryParse(levelStr, out var level))
+        if (!int.TryParse(str, out var amount) || !int.TryParse(levelStr, out var level) || amount <= 0 ||
+            !int.TryParse(arg.BasicArgs[0], out var relicId) ||
+            !GameData.RelicConfigData.TryGetValue(relicId, out var relicConfig) || level < 0 || level > relicConfig.MaxLevel)
         {
             await arg.SendMsg(I18NManager.Translate("Game.Command.Notice.InvalidArguments"));
+            return;
+        }
+
+        // PutItem rejects a full bag without propagating an error to HandleRelic. Check before
+        // the batch and confirm insertion below so MUIP never receives a false success.
+        if (amount > GameConstants.INVENTORY_MAX_RELIC - player.InventoryManager!.Data.RelicItems.Count)
+        {
+            await arg.SendMsg("错误：遗器背包空间不足，本次未发放。请先清理背包或减少数量。");
             return;
         }
 
@@ -37,7 +50,11 @@ public class CommandRelic : ICommand
         var mainAffixId = 0;
         if (!arg.BasicArgs[1].Contains(':'))
         {
-            mainAffixId = int.Parse(arg.BasicArgs[1]);
+            if (!int.TryParse(arg.BasicArgs[1], out mainAffixId))
+            {
+                await arg.SendMsg(I18NManager.Translate("Game.Command.Notice.InvalidArguments"));
+                return;
+            }
             startIndex++;
         }
 
@@ -58,8 +75,8 @@ public class CommandRelic : ICommand
 
         for (var i = 0; i < amount; i++)
         {
-            var (ret, _) = await player.InventoryManager!.HandleRelic(
-                int.Parse(arg.BasicArgs[0]), ++player.InventoryManager!.Data.NextUniqueId,
+            var (ret, item) = await player.InventoryManager!.HandleRelic(
+                relicId, ++player.InventoryManager!.Data.NextUniqueId,
                 level, mainAffixId, subAffixes);
 
             switch (ret)
@@ -73,6 +90,11 @@ public class CommandRelic : ICommand
                 case 3:
                     await arg.SendMsg(I18NManager.Translate("Game.Command.Relic.InvalidSubAffixId"));
                     return;
+            }
+            if (item == null || !player.InventoryManager.Data.RelicItems.Any(x => x.UniqueId == item.UniqueId))
+            {
+                await arg.SendMsg($"错误：遗器未能入库，本次已发放 {i}/{amount} 件。请核对背包后重试剩余数量。");
+                return;
             }
         }
 
