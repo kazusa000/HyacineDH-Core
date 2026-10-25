@@ -60,7 +60,9 @@ public class EntityProp(SceneInstance scene, MazePropExcel excel, GroupInfo grou
     {
         //if (State == PropStateEnum.Open) return;  // already open   DO NOT CLOSE AGAIN
         State = state;
-        if (sendPacket)
+        // LoadProp can set the initial state while the scene is already live. Until AddEntity assigns
+        // an ID, that state belongs in the group's Loaded snapshot, never in an entity-zero increment.
+        if (sendPacket && EntityId != 0)
         {
             // Re-sending the entity with refresh type 3 updates its state in place (as March7thHoney 4.2 does).
             // Deleting and re-adding it respawned the prop, so client state listeners never ran: a console

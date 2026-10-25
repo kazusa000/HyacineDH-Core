@@ -34,13 +34,10 @@ public class SceneEntityLoader(SceneInstance scene)
 
     public virtual async ValueTask SyncEntity()
     {
-        var refreshed = false;
-        var oldGroupId = new List<int>();
-        foreach (var entity in Scene.Entities.Values.Where(entity => !oldGroupId.Contains(entity.GroupId)))
-            oldGroupId.Add(entity.GroupId);
-
-        var removeList = new List<BaseGameEntity>();
-        var addList = new List<BaseGameEntity>();
+        // Empty groups have client graphs/properties too; entity presence alone cannot track their lifecycle.
+        var oldGroupId = Scene.Groups.Concat(Scene.Entities.Values.Select(e => e.GroupId)).ToHashSet();
+        var loadedGroups = new List<int>();
+        var unloadedGroups = new List<int>();
 
         foreach (var group in Scene.FloorInfo!.Groups.Values
                      .Where(group => group.LoadSide != GroupLoadSideEnum.Client)
@@ -55,40 +52,37 @@ public class SceneEntityLoader(SceneInstance scene)
                     group.UnloadCondition.IsTrue(Scene.Player.MissionManager!.Data,
                         false)) // condition: Unload Condition  anyone of the conditions is true then unload
                 {
-                    foreach (var entity in Scene.Entities.Values.Where(entity => entity.GroupId == group.Id))
+                    foreach (var entity in Scene.Entities.Values.Where(entity => entity.GroupId == group.Id).ToList())
                     {
                         await Scene.RemoveEntity(entity, false);
-                        removeList.Add(entity);
-                        refreshed = true;
                     }
 
                     Scene.Groups.Remove(group.Id);
+                    unloadedGroups.Add(group.Id);
                 }
                 else if (group.OwnerMainMissionID != 0 &&
                          Scene.Player.MissionManager!.GetMainMissionStatus(group.OwnerMainMissionID) !=
                          MissionPhaseEnum.Accept) // condition: Owner Main Mission ID
                 {
-                    foreach (var entity in Scene.Entities.Values.Where(entity => entity.GroupId == group.Id))
+                    foreach (var entity in Scene.Entities.Values.Where(entity => entity.GroupId == group.Id).ToList())
                     {
                         await Scene.RemoveEntity(entity, false);
-                        removeList.Add(entity);
-                        refreshed = true;
                     }
 
                     Scene.Groups.Remove(group.Id);
+                    unloadedGroups.Add(group.Id);
                 }
                 else if (!group.SavedValueCondition.IsTrue(
                              Scene.Player.SceneData!
                                  .GetFloorSavedValues(Scene.FloorId))) // condition: Saved Value Condition
                 {
-                    foreach (var entity in Scene.Entities.Values.Where(entity => entity.GroupId == group.Id))
+                    foreach (var entity in Scene.Entities.Values.Where(entity => entity.GroupId == group.Id).ToList())
                     {
                         await Scene.RemoveEntity(entity, false);
-                        removeList.Add(entity);
-                        refreshed = true;
                     }
 
                     Scene.Groups.Remove(group.Id);
+                    unloadedGroups.Add(group.Id);
                 }
                 else if (ConfigManager.Config.ServerOption.EnableMission &&
                          group.RelatedBattleId.Count > 0 &&
@@ -97,25 +91,23 @@ public class SceneEntityLoader(SceneInstance scene)
                                  x.FinishType == MissionFinishTypeEnum.StageWin &&
                                  group.RelatedBattleId.Contains(x.ParamInt1)))
                 {
-                    foreach (var entity in Scene.Entities.Values.Where(entity => entity.GroupId == group.Id))
+                    foreach (var entity in Scene.Entities.Values.Where(entity => entity.GroupId == group.Id).ToList())
                     {
                         await Scene.RemoveEntity(entity, false);
-                        removeList.Add(entity);
-                        refreshed = true;
                     }
 
                     Scene.Groups.Remove(group.Id);
+                    unloadedGroups.Add(group.Id);
                 }
             }
             else // check if it should be loaded
             {
                 var groupList = await LoadGroup(group);
-                refreshed = groupList != null || refreshed;
-                addList.AddRange(groupList ?? []);
+                if (groupList != null) loadedGroups.Add(group.Id);
             }
 
-        if (refreshed && (addList.Count > 0 || removeList.Count > 0))
-            await Scene.Player.SendPacket(new PacketSceneGroupRefreshScNotify(Scene.Player, addList, removeList));
+        if (loadedGroups.Count > 0 || unloadedGroups.Count > 0)
+            await Scene.Player.SendPacket(PacketSceneGroupRefreshScNotify.ForGroupChanges(Scene, loadedGroups, unloadedGroups));
     }
 
     public virtual async ValueTask<List<BaseGameEntity>?> LoadGroup(GroupInfo info, bool forceLoad = false)
@@ -177,8 +169,7 @@ public class SceneEntityLoader(SceneInstance scene)
             !forceLoad) // condition: Saved Value Condition
             return null;
 
-        if (Scene.Entities.Values.ToList().FindIndex(x => x.GroupId == info.Id) !=
-            -1) // check if group is already loaded
+        if (Scene.Groups.Contains(info.Id) || Scene.Entities.Values.Any(x => x.GroupId == info.Id))
             return null;
 
         if (ConfigManager.Config.ServerOption.EnableMission &&
@@ -231,8 +222,8 @@ public class SceneEntityLoader(SceneInstance scene)
         if (group == null) return null;
         var entities = await LoadGroup(group, true);
 
-        if (sendPacket && entities is { Count: > 0 })
-            await Scene.Player.SendPacket(new PacketSceneGroupRefreshScNotify(Scene.Player, entities));
+        if (sendPacket && entities != null)
+            await Scene.Player.SendPacket(PacketSceneGroupRefreshScNotify.ForGroupChanges(Scene, [groupId]));
 
         return entities;
     }
@@ -242,21 +233,19 @@ public class SceneEntityLoader(SceneInstance scene)
         var group = Scene.FloorInfo?.Groups.TryGetValue(groupId, out var v1) == true ? v1 : null;
         if (group == null) return;
 
-        var removeList = new List<BaseGameEntity>();
-        var refreshed = false;
+        var wasLoaded = Scene.Groups.Contains(groupId);
 
-        foreach (var entity in Scene.Entities.Values)
+        foreach (var entity in Scene.Entities.Values.ToList())
             if (entity.GroupId == group.Id)
             {
                 await Scene.RemoveEntity(entity, false);
-                removeList.Add(entity);
-                refreshed = true;
+                wasLoaded = true;
             }
 
         Scene.Groups.Remove(group.Id);
 
-        if (refreshed && sendPacket)
-            await Scene.Player.SendPacket(new PacketSceneGroupRefreshScNotify(Scene.Player, removeEntity: removeList));
+        if (wasLoaded && sendPacket)
+            await Scene.Player.SendPacket(PacketSceneGroupRefreshScNotify.ForGroupChanges(Scene, [], [groupId]));
     }
 
     public virtual async ValueTask<EntityNpc?> LoadNpc(NpcInfo info, GroupInfo group, bool sendPacket = false)

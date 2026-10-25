@@ -163,7 +163,7 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
         });
 
         if (sendPacket) await Player.SendPacket(new PacketPlayerSyncScNotify(sync));
-        Player.SceneInstance?.SyncGroupInfo();
+        if (Player.SceneInstance != null) await Player.SceneInstance.SyncGroupInfo();
         if (mission.SubMissionInfo != null)
             try
             {

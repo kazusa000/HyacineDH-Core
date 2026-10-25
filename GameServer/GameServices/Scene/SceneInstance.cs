@@ -47,6 +47,27 @@ public class SceneInstance
 
     #region Serialization
 
+    // Use the same group envelope for initial scene snapshots and live Loaded notifications.
+    public SceneEntityGroupInfo ToGroupProto(int groupId)
+    {
+        var result = new SceneEntityGroupInfo
+        {
+            GroupId = (uint)groupId,
+            State = (uint)GetGroupState(groupId)
+        };
+        var properties = FloorInfo?.Groups.GetValueOrDefault(groupId)?.GroupPropertyMap;
+        var saved = Player.SceneData!.GroupPropertyData.GetValueOrDefault(FloorId)?
+            .GetValueOrDefault(groupId);
+        if (properties != null)
+            foreach (var property in properties.Values)
+                if (property.Side != GroupPropertySideEnum.ClientOnly)
+                    result.GGNJMGHHHMJ[property.Name] = saved?.GetValueOrDefault(property.Name, property.DefaultValue)
+                        ?? property.DefaultValue;
+        foreach (var entity in Entities.Values.Where(e => e.GroupId == groupId))
+            result.EntityList.Add(entity.ToProto());
+        return result;
+    }
+
     public SceneInfo ToProto()
     {
         SceneInfo sceneInfo = new()
@@ -77,53 +98,8 @@ public class SceneInstance
 
         sceneInfo.EntityGroupList.Add(playerGroupInfo);
 
-        List<SceneEntityGroupInfo> groups = []; // other groups
-
-        // add entities to groups
-        foreach (var entity in Entities)
-        {
-            if (entity.Value.GroupId == 0) continue;
-            if (groups.FindIndex(x => x.GroupId == entity.Value.GroupId) == -1)
-            {
-                var property = FloorInfo?.Groups.GetValueOrDefault(entity.Value.GroupId)?.GroupPropertyMap ?? [];
-
-                Dictionary<string, int> resProperty = [];
-                var savedProp = Player.SceneData!.GroupPropertyData.GetValueOrDefault(FloorId, [])
-                    .GetValueOrDefault(entity.Value.GroupId, []);
-
-                foreach (var info in property.Values.Where(x => x.Side != GroupPropertySideEnum.ClientOnly))
-                    resProperty.Add(info.Name, savedProp.GetValueOrDefault(info.Name, info.DefaultValue));
-
-                groups.Add(new SceneEntityGroupInfo
-                {
-                    GroupId = (uint)entity.Value.GroupId,
-                    GGNJMGHHHMJ = { resProperty }
-                });
-            }
-
-            groups[groups.FindIndex(x => x.GroupId == entity.Value.GroupId)].EntityList.Add(entity.Value.ToProto());
-        }
-
-        foreach (var groupId in Groups) // Add for empty group
-            if (groups.FindIndex(x => x.GroupId == groupId) == -1)
-            {
-                var property = FloorInfo?.Groups.GetValueOrDefault(groupId)?.GroupPropertyMap ?? [];
-
-                Dictionary<string, int> resProperty = [];
-                var savedProp = Player.SceneData!.GroupPropertyData.GetValueOrDefault(FloorId, [])
-                    .GetValueOrDefault(groupId, []);
-
-                foreach (var info in property.Values.Where(x => x.Side != GroupPropertySideEnum.ClientOnly))
-                    resProperty.Add(info.Name, savedProp.GetValueOrDefault(info.Name, info.DefaultValue));
-
-                groups.Add(new SceneEntityGroupInfo
-                {
-                    GroupId = (uint)groupId,
-                    GGNJMGHHHMJ = { resProperty }
-                });
-            }
-
-        foreach (var group in groups) sceneInfo.EntityGroupList.Add(group);
+        foreach (var groupId in Entities.Values.Select(e => e.GroupId).Concat(Groups).Where(id => id != 0).Distinct())
+            sceneInfo.EntityGroupList.Add(ToGroupProto(groupId));
 
         // custom save data and floor saved data
         Player.SceneData!.CustomSaveData.TryGetValue(EntryId, out var data);
@@ -420,12 +396,13 @@ public class SceneInstance
 
         LeaderEntityId = leaderAvatar.EntityId;
         if (sendPacket && !notSendPacket)
-            await Player.SendPacket(new PacketSceneGroupRefreshScNotify(Player, addAvatar, removeAvatar));
+            await Player.SendPacket(new PacketSceneGroupRefreshScNotify(Player, addAvatar, removeAvatar,
+                SceneGroupRefreshType.Loaded));
     }
 
-    public void SyncGroupInfo()
+    public ValueTask SyncGroupInfo()
     {
-        EntityLoader?.SyncEntity();
+        return EntityLoader?.SyncEntity() ?? ValueTask.CompletedTask;
     }
 
     public async ValueTask OnUseSkill(SceneCastSkillCsReq req)

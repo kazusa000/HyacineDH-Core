@@ -11,14 +11,9 @@ public class PacketSceneGroupRefreshScNotify : BasePacket
 {
     public PacketSceneGroupRefreshScNotify(PlayerInstance player, List<BaseGameEntity>? addEntity = null,
         List<BaseGameEntity>? removeEntity = null,
-        SceneGroupRefreshType refreshType = SceneGroupRefreshType.Loaded)
+        SceneGroupRefreshType refreshType = SceneGroupRefreshType.Afibfmafncc)
         : base(CmdIds.SceneGroupRefreshScNotify)
     {
-        // The 4.x client ignores deletions sent as Loaded (a beaten monster stayed on the field and touching it
-        // again hung on the battle loading screen); March7thHoney 4.2 sends every deletion as an in-place update.
-        if (refreshType == SceneGroupRefreshType.Loaded && removeEntity is { Count: > 0 })
-            refreshType = SceneGroupRefreshType.Afibfmafncc;
-
         var proto = new SceneGroupRefreshScNotify
         {
             FloorId = (uint)player.Data.FloorId,
@@ -31,7 +26,8 @@ public class PacketSceneGroupRefreshScNotify : BasePacket
             var group = new GroupRefreshInfo
             {
                 GroupId = (uint)e.GroupId,
-                RefreshType = refreshType
+                RefreshType = refreshType == SceneGroupRefreshType.Loaded
+                    ? SceneGroupRefreshType.Afibfmafncc : refreshType
             };
             group.RefreshEntity.Add(new SceneEntityRefreshInfo
             {
@@ -62,15 +58,59 @@ public class PacketSceneGroupRefreshScNotify : BasePacket
                 refreshInfo[e.GroupId] = group;
         }
 
-        proto.GroupRefreshList.AddRange(refreshInfo.Values);
+        foreach (var group in refreshInfo.Values)
+        {
+            // Loaded reads Unk1.EntityList in the 4.1 client. RefreshEntity is consumed only by the
+            // incremental path. Group zero is the separate avatar path, whose original envelope is retained.
+            if (group.RefreshType == SceneGroupRefreshType.Loaded && group.GroupId != 0)
+            {
+                group.Unk1 = player.SceneInstance!.ToGroupProto((int)group.GroupId);
+                group.State = group.Unk1.State;
+                group.RefreshEntity.Clear();
+            }
+            proto.GroupRefreshList.Add(group);
+        }
 
         SetData(proto);
     }
 
     public PacketSceneGroupRefreshScNotify(PlayerInstance player, BaseGameEntity? addEntity = null,
-        BaseGameEntity? removeEntity = null, SceneGroupRefreshType refreshType = SceneGroupRefreshType.Loaded) :
+        BaseGameEntity? removeEntity = null, SceneGroupRefreshType refreshType = SceneGroupRefreshType.Afibfmafncc) :
         this(player, addEntity == null ? [] : [addEntity], removeEntity == null ? [] : [removeEntity], refreshType)
     {
+    }
+
+    private PacketSceneGroupRefreshScNotify(SceneGroupRefreshScNotify proto) : base(CmdIds.SceneGroupRefreshScNotify)
+    {
+        SetData(proto);
+    }
+
+    public static PacketSceneGroupRefreshScNotify ForGroupChanges(SceneInstance scene,
+        IEnumerable<int> loadedGroupIds, IEnumerable<int>? unloadedGroupIds = null)
+    {
+        var proto = new SceneGroupRefreshScNotify
+        {
+            FloorId = (uint)scene.FloorId,
+            DimensionId = (uint)((scene.EntityLoader as StoryLineEntityLoader)?.DimensionId ?? 0)
+        };
+        foreach (var id in (unloadedGroupIds ?? []).Distinct())
+            proto.GroupRefreshList.Add(new GroupRefreshInfo
+            {
+                GroupId = (uint)id,
+                RefreshType = SceneGroupRefreshType.Unload
+            });
+        foreach (var id in loadedGroupIds.Distinct())
+        {
+            var group = scene.ToGroupProto(id);
+            proto.GroupRefreshList.Add(new GroupRefreshInfo
+            {
+                GroupId = (uint)id,
+                State = group.State,
+                RefreshType = SceneGroupRefreshType.Loaded,
+                Unk1 = group
+            });
+        }
+        return new PacketSceneGroupRefreshScNotify(proto);
     }
 
     public PacketSceneGroupRefreshScNotify(SceneInstance scene, List<GroupPropertyRefreshData> refreshDataList) : base(
@@ -99,7 +139,7 @@ public class PacketSceneGroupRefreshScNotify : BasePacket
             var group = new GroupRefreshInfo
             {
                 GroupId = (uint)groupId,
-                RefreshType = SceneGroupRefreshType.Loaded
+                RefreshType = SceneGroupRefreshType.Afibfmafncc
             };
 
             foreach (var data in dataList)
