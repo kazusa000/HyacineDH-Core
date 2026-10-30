@@ -168,11 +168,13 @@ public partial class PlayerInstance
                 break;
         }
 
-        // for door unlock
+        // for door unlock. A door in a custom state (e.g. the Belobog fog door, CustomState01..05, one step per power
+        // core) is advanced by the client's own interactions (101020..101023); opening it here would leave those
+        // interactions, and the cores' graphs waiting on the door's state, without a match.
         if (prop.PropInfo.UnlockDoorID.Count > 0)
             foreach (var p in prop.PropInfo.UnlockDoorID.SelectMany(id =>
                          SceneInstance.GetEntitiesInGroup<EntityProp>(id.Key)
-                             .Where(p => id.Value.Contains(p.PropInfo.ID))))
+                             .Where(p => id.Value.Contains(p.PropInfo.ID) && p.State < PropStateEnum.CustomState01)))
             {
                 await p.SetState(PropStateEnum.Open);
                 await MissionManager!.OnPlayerInteractWithProp();
