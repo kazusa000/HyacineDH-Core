@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using HyacineCore.Server.Data;
 using HyacineCore.Server.Data.Config;
 using HyacineCore.Server.Data.Config.Scene;
 using HyacineCore.Server.Data.Config.Task;
@@ -9,6 +10,8 @@ using HyacineCore.Server.Enums.Task;
 using HyacineCore.Server.GameServer.Game.Player;
 using HyacineCore.Server.GameServer.Game.Scene.Entity;
 using HyacineCore.Server.Proto;
+using HyacineCore.Server.Util;
+using Newtonsoft.Json.Linq;
 
 namespace HyacineCore.Server.GameServer.Game.Task;
 
@@ -183,7 +186,11 @@ public class LevelTask(PlayerInstance player)
     public async ValueTask<object?> ChangePropState(TaskConfigInfo act, SubMissionData subMission,
         GroupInfo? group = null)
     {
-        if (subMission.SubMissionInfo?.FinishType != MissionFinishTypeEnum.PropState) return null;
+        if (subMission.SubMissionInfo?.FinishType != MissionFinishTypeEnum.PropState)
+        {
+            await UnlockMissionProp(subMission);
+            return null;
+        }
 
         foreach (var entity in Player.SceneInstance!.Entities.Values)
             if (entity is EntityProp prop && prop.GroupId == subMission.SubMissionInfo.ParamInt1 &&
@@ -331,6 +338,102 @@ public class LevelTask(PlayerInstance player)
             await Player.LineupManager!.RemoveAvatarFromCurTeam(subMission.SubMissionInfo.ParamInt1);
 
         return null;
+    }
+
+    // ChangePropState is a server-side task, so this resource data keeps it without target or state. Outside a PropState
+    // sub-mission (handled above with its own target) it unlocks the Locked prop the story goes on with: one the
+    // sub-mission's own graph refers to (101030104: the console it then waits on), or else the target of a PropState
+    // sub-mission of the same main mission that is running or follows this one, the one nearest to the monster of a
+    // KillMonster prerequisite or else to the player (1011301: each power core opens once its guard is beaten). The prop
+    // goes to the state the player's interaction starts from: Open when that sub-mission waits for Closed (the core's
+    // Open branch plays the performance and requests the interaction that closes it), otherwise Closed.
+    private async ValueTask UnlockMissionProp(SubMissionData subMission)
+    {
+        var info = subMission.SubMissionInfo;
+        var scene = Player.SceneInstance;
+        if (info == null || scene == null) return;
+        var locked = scene.Entities.Values.OfType<EntityProp>().Where(p => p.State == PropStateEnum.Locked).ToList();
+        if (locked.Count == 0) return;
+
+        var running = Player.MissionManager!.GetRunningSubMissionIdList();
+        var goals = new Dictionary<(int, int), PropStateEnum>();
+        foreach (var other in subMission.MainMissionInfo?.SubMissionList ?? [])
+            if (other.FinishType == MissionFinishTypeEnum.PropState &&
+                (running.Contains(other.ID) || other.TakeParamIntList?.Contains(info.ID) == true))
+                goals.TryAdd((other.ParamInt1, other.ParamInt2), (PropStateEnum)other.ParamInt3);
+
+        var own = GraphPropTargets(info);
+        var targets = locked.Where(p => own.Contains((p.GroupId, p.InstId))).ToList();
+        if (targets.Count == 0)
+        {
+            var near = KillMonsterPosition(info) ?? Player.Data.Pos;
+            var candidates = locked.Where(p => goals.ContainsKey((p.GroupId, p.InstId))).ToList();
+            var best = near == null
+                ? candidates.FirstOrDefault()
+                : candidates.MinBy(p => p.Position.GetFast2dDist(near));
+            if (best != null) targets.Add(best);
+        }
+
+        foreach (var prop in targets)
+        {
+            var state = goals.TryGetValue((prop.GroupId, prop.InstId), out var goal) && goal == PropStateEnum.Closed &&
+                        prop.Excel.PropStateList.Contains(PropStateEnum.Open)
+                ? PropStateEnum.Open
+                : PropStateEnum.Closed;
+            if (!prop.Excel.PropStateList.Contains(state)) continue;
+            Logger.GetByClassName().Info(
+                $"Sub-mission {info.ID} ChangePropState: prop {prop.GroupId}/{prop.InstId} Locked -> {state}");
+            await prop.SetState(state);
+        }
+
+        if (targets.Count > 0) await Player.MissionManager.HandleFinishType(MissionFinishTypeEnum.PropState);
+    }
+
+    // The position of the monster a KillMonster prerequisite of the sub-mission was about, if it is on this floor.
+    private Position? KillMonsterPosition(SubMissionInfo info)
+    {
+        foreach (var id in info.TakeParamIntList ?? [])
+        {
+            GameData.SubMissionInfoData.TryGetValue(id, out var before);
+            var kill = before?.SubMissionInfo;
+            if (kill?.FinishType != MissionFinishTypeEnum.KillMonster) continue;
+            if (Player.SceneInstance?.FloorInfo?.Groups.TryGetValue(kill.ParamInt1, out var group) != true) continue;
+            var monster = group!.MonsterList.Find(m => m.ID == kill.ParamInt2);
+            if (monster != null) return monster.ToPositionProto();
+        }
+
+        return null;
+    }
+
+    private static readonly ConcurrentDictionary<int, HashSet<(int, int)>> GraphPropTargetCache = [];
+
+    // Props a sub-mission's level graph refers to by group and ID (TargetFetchAdvPropEx SinglePropByPropID), read from
+    // the raw graph: its typed form keeps the nested callbacks' targets only where their task types are modelled.
+    private static HashSet<(int, int)> GraphPropTargets(SubMissionInfo info)
+    {
+        return GraphPropTargetCache.GetOrAdd(info.ID, _ =>
+        {
+            var found = new HashSet<(int, int)>();
+            var file = new FileInfo(ConfigManager.Config.Path.ResourcePath + "/" + info.MissionJsonPath);
+            if (info.MissionJsonPath == "" || !file.Exists) return found;
+            try
+            {
+                foreach (var token in JObject.Parse(File.ReadAllText(file.FullName)).Descendants().OfType<JObject>())
+                {
+                    if ((string?)token["$type"] != "RPG.GameCore.TargetFetchAdvPropEx" ||
+                        (string?)token["FetchType"] != "SinglePropByPropID") continue;
+                    var group = token.SelectToken("SinglePropID.GroupID.FixedValue.Value");
+                    var prop = token.SelectToken("SinglePropID.ID.FixedValue.Value");
+                    if (group != null && prop != null) found.Add(((int)group, (int)prop));
+                }
+            }
+            catch
+            {
+                // an unreadable graph refers to no props
+            }
+
+            return found;
+        });
     }
 
     public async ValueTask<object?> ChangeGroupState(TaskConfigInfo act, SubMissionData subMission,
