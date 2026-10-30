@@ -83,6 +83,9 @@ public class ServerOption
     public bool AutoUpgradeWorldLevel { get; set; } = true;
     // Lua sent after login that replaces the client's version text with the server watermark (UID, quote).
     public bool ClientWatermark { get; set; } = true;
+    // Automated client tests only: folder (relative to the working directory) whose *.lua files are sent to the
+    // logged-in client, which runs them like the watermark script; sent files move to its "sent" subfolder.
+    public string LuaInbox { get; set; } = "";
     public bool EnableMission { get; set; } = true; // experimental
     // Puzzle steps whose server-side logic is missing from the data finish when the player interacts with the puzzle group.
     public bool PuzzleFallback { get; set; } = true;

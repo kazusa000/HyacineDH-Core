@@ -20,6 +20,9 @@ public class NewLoginResJson
         public VerifyData(string aid, string email, string token)
         {
             user_info.aid = aid;
+            // Without mid the SDK keeps the account but no sToken ("sToken and gameToken both empty"), so every
+            // launch fell back to the password window instead of logging in automatically.
+            user_info.mid = aid;
             user_info.email = email;
             this.token.token = token;
         }

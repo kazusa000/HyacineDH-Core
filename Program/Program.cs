@@ -24,6 +24,38 @@ namespace HyacineCore.Server.Program.Program;
 public class EntryPoint
 {
     private static readonly Logger Logger = new("Program");
+
+    private static void StartLuaInbox(string folder)
+    {
+        if (folder.Length == 0) return;
+        var inbox = Path.GetFullPath(folder);
+        var sent = Path.Combine(inbox, "sent");
+        Directory.CreateDirectory(sent);
+        Logger.Warn($"Lua inbox enabled: {inbox}");
+        _ = Task.Run(async () =>
+        {
+            while (true)
+            {
+                await Task.Delay(500);
+                try
+                {
+                    var targets = Listener.Connections.Values.Where(x => x.State == SessionStateEnum.ACTIVE).ToList();
+                    if (targets.Count == 0) continue;
+                    foreach (var file in Directory.GetFiles(inbox, "*.lua").Order())
+                    {
+                        var script = await File.ReadAllBytesAsync(file);
+                        foreach (var connection in targets) await connection.SendPacket(new HandshakePacket(script));
+                        File.Move(file, Path.Combine(sent, Path.GetFileName(file)), true);
+                        Logger.Info($"Lua sent: {Path.GetFileName(file)}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error("Lua inbox", ex);
+                }
+            }
+        });
+    }
     public static readonly DatabaseHelper DatabaseHelper = new();
     public static readonly Listener Listener = new();
     public static readonly CommandManager CommandManager = new();
@@ -196,6 +228,7 @@ public class EntryPoint
                     new Connection(conversation, remote));
             Listener.CreateConnection = handler;
             Listener.StartListener();
+            StartLuaInbox(ConfigManager.Config.ServerOption.LuaInbox);
         }
 
         // Load the game data
