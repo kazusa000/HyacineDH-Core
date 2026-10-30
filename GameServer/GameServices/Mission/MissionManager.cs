@@ -146,7 +146,7 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
     }
 
     public async ValueTask<MissionSync?> AcceptSubMission(int missionId, bool sendPacket,
-        bool doFinishTypeAction = true)
+        bool doFinishTypeAction = true, bool deferStart = false)
     {
         if (!ConfigManager.Config.ServerOption.EnableMission) return null;
         GameData.SubMissionInfoData.TryGetValue(missionId, out var mission);
@@ -176,6 +176,18 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
             {
             }
 
+        if (!deferStart) await StartSubMission(missionId);
+        return sync;
+    }
+
+    // Runs what an accepted sub-mission starts with: its level tasks (which can change the scene) and anything that
+    // finishes it at once. FinishSubMission defers this until the client has been told about the finished mission and
+    // the newly accepted ones; otherwise a follow-up that finishes immediately (an EnterFloor whose own task enters
+    // that floor) is reported finished before it is reported accepted, and the client keeps it running.
+    private async ValueTask StartSubMission(int missionId)
+    {
+        GameData.SubMissionInfoData.TryGetValue(missionId, out var mission);
+        if (mission == null) return;
         if (SkipSubMissionList.Contains(missionId)) await FinishSubMission(missionId);
         if (mission.SubMissionInfo != null) await PuzzleFallback.OnSubMissionAccepted(Player, mission.SubMissionInfo);
 
@@ -186,8 +198,6 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
 
         // TODO: Mission Task
         Player.TaskManager?.MissionTaskTrigger.TriggerMissionTask(missionId);
-
-        return sync;
     }
 
     public List<int> GetAllFinishedMissionIds()
@@ -255,6 +265,7 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
         });
 
         // get next sub mission
+        var accepted = new List<int>();
         foreach (var nextMission in mainMission.MissionInfo?.SubMissionList ?? [])
         {
             if (nextMission.TakeType != SubMissionTakeTypeEnum.AnySequence &&
@@ -276,19 +287,23 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
 
             if (canAccept)
             {
-                var s = await AcceptSubMission(nextMission.ID, false, false);
+                var s = await AcceptSubMission(nextMission.ID, false, false, true);
                 if (s != null)
+                {
+                    accepted.Add(nextMission.ID);
                     sync.MissionList.Add(new Proto.Mission
                     {
                         Id = (uint)nextMission.ID,
                         Status = MissionStatus.MissionDoing
                     });
+                }
             }
         }
 
         await Player.SendPacket(new PacketPlayerSyncScNotify(sync));
         await Player.SendPacket(new PacketStartFinishSubMissionScNotify(missionId));
         await Player.SendPacket(new PacketFinishedMissionScNotify([missionId]));
+        foreach (var id in accepted) await StartSubMission(id);
 
         if (mainMission.MissionInfo != null)
             await HandleFinishAction(mainMission.MissionInfo, missionId);

@@ -34,6 +34,8 @@ public class EntryPoint
         Logger.Warn($"Lua inbox enabled: {inbox}");
         _ = Task.Run(async () =>
         {
+            // ClientDownloadData.Time is in seconds and the client ignores a second script with the same stamp.
+            var lastSecond = 0L;
             while (true)
             {
                 await Task.Delay(500);
@@ -44,6 +46,8 @@ public class EntryPoint
                     foreach (var file in Directory.GetFiles(inbox, "*.lua").Order())
                     {
                         var script = await File.ReadAllBytesAsync(file);
+                        while (DateTimeOffset.UtcNow.ToUnixTimeSeconds() <= lastSecond) await Task.Delay(50);
+                        lastSecond = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
                         foreach (var connection in targets) await connection.SendPacket(new HandshakePacket(script));
                         File.Move(file, Path.Combine(sent, Path.GetFileName(file)), true);
                         Logger.Info($"Lua sent: {Path.GetFileName(file)}");
