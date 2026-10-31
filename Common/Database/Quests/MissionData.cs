@@ -33,6 +33,13 @@ public class MissionData : BaseDatabaseDataHelper
     [SugarColumn(IsNullable = true, IsJson = true, ColumnDataType = "TEXT")]
     public Dictionary<int, Dictionary<string, uint>> CustomValues { get; set; } = [];
 
+    // Main missions the story closed before they were finished (FinishAction DisableMission, after the player gives
+    // them up); nullable for databases created before it was saved.
+    [SugarColumn(IsNullable = true, IsJson = true, ColumnDataType = "text")]
+    public List<int> DisabledMainMissionIds { get; set; } = [];
+
+    public bool IsMainMissionDisabled(int missionId) => DisabledMainMissionIds?.Contains(missionId) == true;
+
     public MissionPhaseEnum GetMainMissionStatus(int missionId)
     {
         if (FinishedMainMissionIds.Contains(missionId)) return MissionPhaseEnum.Finish;

@@ -25,6 +25,8 @@ public class PacketGetMissionStatusScRsp : BasePacket
             var status = player.MissionManager!.GetMainMissionStatus((int)item);
             if (status == MissionPhaseEnum.Finish)
                 proto.FinishedMainMissionIdList.Add(item);
+            else if (player.MissionManager!.Data.IsMainMissionDisabled((int)item))
+                proto.DisabledMainMissionIdList.Add(item);
             else
                 proto.UnfinishedMainMissionIdList.Add(item);
         }

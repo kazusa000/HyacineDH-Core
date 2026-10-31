@@ -36,6 +36,7 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
     {
         if (!ConfigManager.Config.ServerOption.EnableMission) return [];
         if (Data.GetMainMissionStatus(missionId) != MissionPhaseEnum.None) return []; // already accepted
+        if (Data.IsMainMissionDisabled(missionId)) return []; // closed by the story
         // Get entry sub mission
         GameData.MainMissionData.TryGetValue(missionId, out var mission);
         if (mission == null) return [];
@@ -137,6 +138,16 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
         }
 
         await Player.SendPacket(new PacketPlayerSyncScNotify(sync));
+    }
+
+    public async ValueTask DisableMainMission(int missionId)
+    {
+        if (!ConfigManager.Config.ServerOption.EnableMission) return;
+        if (Data.GetMainMissionStatus(missionId) == MissionPhaseEnum.Finish) return;
+        Data.DisabledMainMissionIds ??= [];
+        Data.DisabledMainMissionIds.SafeAdd(missionId);
+        await RemoveMainMission(missionId);
+        DatabaseHelper.ToSaveUidList.SafeAdd(Player.Uid);
     }
 
     public async ValueTask AcceptSubMission(int missionId)
@@ -796,6 +807,8 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
                 info.SceneMissionInfo.FinishedMainMissionIdList.Add((uint)mainId);
             else if (GetMainMissionStatus(mainId) == MissionPhaseEnum.Accept)
                 info.SceneMissionInfo.UnfinishedMainMissionIdList.Add((uint)mainId);
+            else if (Data.IsMainMissionDisabled(mainId))
+                info.SceneMissionInfo.DisabledMainMissionIdList.Add((uint)mainId);
     }
 
     #endregion
