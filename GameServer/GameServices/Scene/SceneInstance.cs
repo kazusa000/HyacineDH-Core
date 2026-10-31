@@ -112,8 +112,13 @@ public class SceneInstance
                     SaveData = customData.Value
                 });
 
-        foreach (var (groupId, state) in Player.SceneData!.GroupStateData.GetValueOrDefault(FloorId) ?? [])
+        var savedStates = Player.SceneData!.GroupStateData.GetValueOrDefault(FloorId) ?? [];
+        foreach (var (groupId, state) in savedStates)
             sceneInfo.GroupStateList.Add(new SceneGroupState { GroupId = (uint)groupId, State = (uint)state });
+        foreach (var group in FloorInfo?.Groups.Values ?? [])
+            if (group.InitialGroupState != 0 && !savedStates.ContainsKey(group.Id))
+                sceneInfo.GroupStateList.Add(new SceneGroupState
+                    { GroupId = (uint)group.Id, State = (uint)group.InitialGroupState });
 
         Player.SceneData!.FloorSavedData.TryGetValue(FloorId, out var floorData);
 
@@ -293,7 +298,9 @@ public class SceneInstance
 
     public int GetGroupState(int groupId)
     {
-        return Player.SceneData!.GroupStateData.GetValueOrDefault(FloorId)?.GetValueOrDefault(groupId) ?? 0;
+        if (Player.SceneData!.GroupStateData.GetValueOrDefault(FloorId)?.TryGetValue(groupId, out var state) == true)
+            return state;
+        return FloorInfo?.Groups.GetValueOrDefault(groupId)?.InitialGroupState ?? 0;
     }
 
     public async ValueTask UpdateFloorSavedValue(string name, int value)

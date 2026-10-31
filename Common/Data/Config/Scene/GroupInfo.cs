@@ -39,7 +39,22 @@ public class GroupInfo
     public List<PropInfo> PropList { get; set; } = [];
     public List<NpcInfo> NPCList { get; set; } = [];
     public Dictionary<int, GroupPropertyConfigInfo> GroupPropertyMap { get; set; } = [];
+    public List<GroupStateTransitionInfo> GroupStateList { get; set; } = [];
     public ValueSourceInfo? ValueSource { get; set; }
+
+    // The group state a group starts in. Most state tables leave state 0 (0 -> 1, 1 -> 0), but a few only switch
+    // between 1 and 2 (the Hanu WolfBroGroups: shrink 1 -> 2, grow 2 -> 1), so they start in 1: from 0 the client's own
+    // RequestGroupStateChange has no transition ("状态跳转未定义", 103030304's TV at F10301001 G156).
+    [JsonIgnore]
+    public int InitialGroupState
+    {
+        get
+        {
+            var defined = GroupStateList.Where(x => x.SrcState != x.DstState).ToList();
+            if (defined.Count == 0 || defined.Any(x => x.SrcState == 0)) return 0;
+            return defined[0].SrcState;
+        }
+    }
 
     [JsonIgnore] public LevelGraphConfigInfo? LevelGraphConfig { get; set; }
 
@@ -200,6 +215,12 @@ public class Condition
 
     [JsonConverter(typeof(StringEnumConverter))]
     public MissionPhaseEnum Phase { get; set; } = MissionPhaseEnum.Accept;
+}
+
+public class GroupStateTransitionInfo
+{
+    public int SrcState { get; set; }
+    public int DstState { get; set; }
 }
 
 public class SavedValueCondition
