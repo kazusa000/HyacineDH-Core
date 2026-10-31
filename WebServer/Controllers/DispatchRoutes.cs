@@ -132,10 +132,33 @@ public class DispatchRoutes : ControllerBase
     // The SDK's automatic login with the sToken it saved from appLoginByPassword.
     [HttpPost("/hkrpg_global/account/ma-passport/token/verifySToken")]
     [HttpPost("/{gameKey}/account/ma-passport/token/verifySToken")]
-    public JsonResult VerifySToken([FromBody] VerifySTokenReqJson req)
+    public JsonResult VerifySToken([FromBody] System.Text.Json.JsonElement body)
     {
-        Logger.Debug($"verifySToken: mid={req.mid} token_len={(req.token?.token?.Length ?? 0)}");
-        return new NewTokenLoginHandler().HandleGlobal(req.mid, req.token?.token);
+        // Read leniently and log only the shape (names and kinds, never the token).
+        string? Text(System.Text.Json.JsonElement e) => e.ValueKind switch
+        {
+            System.Text.Json.JsonValueKind.String => e.GetString(),
+            System.Text.Json.JsonValueKind.Number => e.GetRawText(),
+            _ => null
+        };
+        string Shape(System.Text.Json.JsonElement e) => e.ValueKind == System.Text.Json.JsonValueKind.Object
+            ? "{" + string.Join(",", e.EnumerateObject().Select(p => p.Name + ":" + Shape(p.Value))) + "}"
+            : e.ValueKind.ToString();
+
+        string? mid = null, token = null;
+        if (body.ValueKind == System.Text.Json.JsonValueKind.Object)
+        {
+            foreach (var name in new[] { "mid", "aid", "uid" })
+                if (mid == null && body.TryGetProperty(name, out var m)) mid = Text(m);
+            if (body.TryGetProperty("token", out var t))
+                token = t.ValueKind == System.Text.Json.JsonValueKind.Object && t.TryGetProperty("token", out var inner)
+                    ? Text(inner)
+                    : Text(t);
+            if (token == null && body.TryGetProperty("stoken", out var s)) token = Text(s);
+        }
+
+        Logger.Debug($"verifySToken: shape={Shape(body)} mid={mid} token_len={token?.Length ?? 0}");
+        return new NewTokenLoginHandler().HandleGlobal(mid, token);
     }
 
     [HttpPost("/hkrpg_global/mdk/shield/api/verify")]

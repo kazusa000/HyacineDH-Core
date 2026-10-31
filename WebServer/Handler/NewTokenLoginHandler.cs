@@ -1,3 +1,4 @@
+using HyacineCore.Server.Database;
 using HyacineCore.Server.Database.Account;
 using HyacineCore.Server.Util;
 using HyacineCore.Server.WebServer.Objects;
@@ -14,7 +15,11 @@ public class NewTokenLoginHandler
     // rotated, so a session killed before the database is saved still finds the token the SDK holds.
     public JsonResult HandleGlobal(string? mid, string? token)
     {
-        var account = int.TryParse(mid, out var uid) ? AccountData.GetAccountByUid(uid) : null;
+        var account = int.TryParse(mid, out var uid)
+            ? AccountData.GetAccountByUid(uid)
+            : string.IsNullOrEmpty(token)
+                ? null
+                : DatabaseHelper.GetAllInstance<AccountData>()?.FirstOrDefault(x => x.DispatchToken == token);
         if (account == null || string.IsNullOrEmpty(token) || account.DispatchToken != token)
             return new JsonResult(new NewLoginResJson { message = "Account not found", retcode = -201 });
 
