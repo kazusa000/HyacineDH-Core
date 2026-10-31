@@ -25,6 +25,10 @@ public class HandlerGroupStateChangeCsReq : Handler
         var target = info.LAPJHJBLNEP != 0 ? info.LAPJHJBLNEP : info.GroupState;
         await scene.UpdateGroupState((int)info.GroupId, (int)target);
         await PuzzleFallback.OnGroupInteract(connection.Player!, (int)info.GroupId);
-        await connection.SendPacket(new PacketGroupStateChangeScRsp(Retcode.RetSucc, info));
+        // The reply carries the state the group is now in: echoing the request's old state, the client took the
+        // change back to normal form (Hanu TV, 2 -> 1) as refused and stayed small.
+        var result = info.Clone();
+        result.GroupState = target;
+        await connection.SendPacket(new PacketGroupStateChangeScRsp(Retcode.RetSucc, result));
     }
 }
