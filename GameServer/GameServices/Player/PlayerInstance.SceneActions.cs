@@ -103,11 +103,16 @@ public partial class PlayerInstance
                     }
                     case PropStateEnum.Open:
                     {
+                        // The pieces keep their own states (hidden until their mission or the client shows them,
+                        // collected when picked up): opening them here would leave an unused one (PieceCount)
+                        // short of the Closed the board's group graph waits for.
                         foreach (var p in SceneInstance.GetEntitiesInGroup<EntityProp>(prop.GroupId).Where(p =>
                                      p.Excel.PropType is not PropTypeEnum.PROP_TREASURE_CHEST &&
-                                     p.Excel.PropType != prop.Excel.PropType))
+                                     p.Excel.PropType != prop.Excel.PropType &&
+                                     !p.PropInfo.Name.StartsWith("JigsawPiece")))
                             await p.SetState(PropStateEnum.Open);
 
+                        await CheckJigsawPieces(prop.GroupId);
                         break;
                     }
                 }
@@ -152,18 +157,7 @@ public partial class PlayerInstance
                     await MissionManager!.OnPlayerInteractWithProp();
                 }
 
-                if (prop.PropInfo.Name.Contains("Piece"))
-                {
-                    var pieceDone = SceneInstance.GetEntitiesInGroup<EntityProp>(prop.GroupId)
-                        .Where(p => p.PropInfo.Name.Contains("Piece")).All(p => p.State == PropStateEnum.Closed);
-
-                    if (pieceDone)
-                        // set JigsawSir to open
-                        foreach (var p in SceneInstance.GetEntitiesInGroup<EntityProp>(prop.GroupId)
-                                     .Where(p => p.PropInfo.Name.Contains("JigsawSir") &&
-                                                 p.State != PropStateEnum.Closed))
-                            await p.SetState(PropStateEnum.TriggerEnable);
-                }
+                if (prop.PropInfo.Name.Contains("Piece")) await CheckJigsawPieces(prop.GroupId);
 
                 break;
         }
@@ -222,6 +216,30 @@ public partial class PlayerInstance
 
         await PuzzleFallback.OnGroupInteract(this, prop.GroupId);
         return prop;
+    }
+
+    // A jigsaw board (JigsawSir) offers its puzzle once the pieces it uses are collected: its group graph waits for
+    // them Closed, then enables the board (TriggerEnable sets up the client's "enter puzzle" button). The board's
+    // PieceCount (default 3) says how many of JigsawPiece1..3 it uses (1030402's second board, G173, takes two).
+    // A locked board waits for its investigate interaction first (Locked -> Open), which sends the pieces out.
+    public async ValueTask CheckJigsawPieces(int groupId, SceneInstance? scene = null)
+    {
+        scene ??= SceneInstance;
+        if (scene == null) return;
+        var props = scene.GetEntitiesInGroup<EntityProp>(groupId);
+        foreach (var board in props.Where(p => p.PropInfo.Name.Contains("JigsawSir") &&
+                                               p.State is not (PropStateEnum.Closed or PropStateEnum.Locked or
+                                                   PropStateEnum.TriggerEnable)))
+        {
+            var count = board.PropInfo.ValueSource?.Values.Find(x => x["Key"]?.ToString() == "PieceCount")?["Value"]
+                ?.ToObject<int>() ?? 0;
+            if (count <= 0) count = 3;
+            var pieces = props.Where(p => p.PropInfo.Name.StartsWith("JigsawPiece") &&
+                                          int.TryParse(p.PropInfo.Name["JigsawPiece".Length..], out var n) &&
+                                          n <= count).ToList();
+            if (pieces.Count > 0 && pieces.All(p => p.State == PropStateEnum.Closed))
+                await board.SetState(PropStateEnum.TriggerEnable);
+        }
     }
 
     public async ValueTask SetPropTimeline(int propEntityId, PropTimelineInfo info)

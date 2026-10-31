@@ -213,6 +213,11 @@ public class SceneEntityLoader(SceneInstance scene)
                 // ignored
             }
 
+        // A jigsaw board whose pieces were all collected before this load (or before the fix that checks them
+        // when a mission collects them) is enabled now, so its puzzle can be entered.
+        if (info.PropList.Any(p => p.Name.Contains("JigsawSir")))
+            await Scene.Player.CheckJigsawPieces(info.Id, Scene);
+
         return entityList;
     }
 

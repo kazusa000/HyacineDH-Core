@@ -114,10 +114,15 @@ public class LevelTask(PlayerInstance player)
             foreach (var groupInfo in Player.SceneInstance?.FloorInfo?.Groups ?? [])
                 if (groupInfo.Value.PropTriggerCustomString.TryGetValue(triggerCustomString.CustomString.Value,
                         out var list))
+                {
                     foreach (var id in list)
                     foreach (var entity in Player.SceneInstance?.Entities.Values.ToList() ?? [])
                         if (entity is EntityProp prop && prop.GroupId == groupInfo.Key && prop.InstId == id)
                             await prop.SetState(PropStateEnum.Closed);
+
+                    // Mission-controlled jigsaw pieces (1030402's G173) are collected this way.
+                    await Player.CheckJigsawPieces(groupInfo.Key);
+                }
 
             await Player.MissionManager!.HandleFinishType(MissionFinishTypeEnum.PropState);
         }
