@@ -155,7 +155,7 @@ public static class PuzzleFallback
         return groups;
     }
 
-    private static string ReadGraph(string path)
+    internal static string ReadGraph(string path)
     {
         return GraphText.GetOrAdd(path, p =>
         {
