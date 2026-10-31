@@ -20,7 +20,10 @@ public class HandlerGroupStateChangeCsReq : Handler
             return;
         }
 
-        await scene.UpdateGroupState((int)info.GroupId, (int)info.GroupState);
+        // The client sends its current state in GroupState and the state it asks for in field 15
+        // (103030304: Hanu TV group 156 sends 1 -> 2); older requests carry only GroupState.
+        var target = info.LAPJHJBLNEP != 0 ? info.LAPJHJBLNEP : info.GroupState;
+        await scene.UpdateGroupState((int)info.GroupId, (int)target);
         await PuzzleFallback.OnGroupInteract(connection.Player!, (int)info.GroupId);
         await connection.SendPacket(new PacketGroupStateChangeScRsp(Retcode.RetSucc, info));
     }
