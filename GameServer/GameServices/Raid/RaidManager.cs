@@ -296,6 +296,8 @@ public class RaidManager : BasePlayerManager
             Player.SceneData!.FloorTargetPuzzleGroupData.Remove(floorId);
             Player.SceneData!.FloorSavedData.Remove(floorId);
             Player.SceneData!.ScenePropData.Remove(floorId);
+            // A rotated room left behind would load the restarted raid turned, with the player outside it.
+            Player.SceneData!.MapRotationData?.Remove(floorId);
         }
 
         await Player.SendPacket(new PacketDelSaveRaidScNotify(raidId, worldLevel));
