@@ -10,6 +10,25 @@ namespace HyacineCore.Server.WebServer.Handler;
 
 public class NewTokenLoginHandler
 {
+    // Global SDK (ma-passport verifySToken): same reply as appLoginByPassword. The saved token is kept rather than
+    // rotated, so a session killed before the database is saved still finds the token the SDK holds.
+    public JsonResult HandleGlobal(string? mid, string? token)
+    {
+        var account = int.TryParse(mid, out var uid) ? AccountData.GetAccountByUid(uid) : null;
+        if (account == null || string.IsNullOrEmpty(token) || account.DispatchToken != token)
+            return new JsonResult(new NewLoginResJson { message = "Account not found", retcode = -201 });
+
+        var res = new NewLoginResJson
+        {
+            message = "OK",
+            data = new VerifyData(account.Uid.ToString(), account.Username + "@egglink.me", token)
+        };
+        res.data.user_info.account_name = account.Username ?? "";
+        res.data.user_info.area_code = "**";
+        res.data.user_info.country = "US";
+        return new JsonResult(res);
+    }
+
     public ContentResult Handle(string mid, string token)
     {
 

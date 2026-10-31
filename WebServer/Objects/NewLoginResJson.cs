@@ -47,7 +47,7 @@ public class NewLoginResJson
         public string area_code { get; set; } = "";
         public string country { get; set; } = "";
         public string email { get; set; } = "";
-        public string is_email_verify { get; set; } = "1";
+        public int is_email_verify { get; set; } = 1;
         public string identity_code { get; set; } = "";
 
         public List<LinkData> links { get; set; } = new()
@@ -68,7 +68,9 @@ public class NewLoginResJson
     public class TokenData
     {
         public string token { get; set; } = "";
-        public string token_type { get; set; } = "1";
+        // A number, as in the real reply: given the string "1" the SDK kept the account without its sToken,
+        // so it could not log in by itself on the next launch.
+        public int token_type { get; set; } = 1;
     }
 
     public class LinkData

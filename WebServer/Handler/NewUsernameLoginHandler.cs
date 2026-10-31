@@ -35,7 +35,7 @@ public class NewUsernameLoginHandler
             res.data.user_info.account_name = accountData.Username;
             res.data.user_info.area_code = "**";
             res.data.user_info.country = "US";
-            res.data.user_info.is_email_verify = "1";
+            res.data.user_info.is_email_verify = 1;
         }
 
         return new JsonResult(res);

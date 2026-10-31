@@ -129,6 +129,15 @@ public class DispatchRoutes : ControllerBase
         return new NewUsernameLoginHandler().Handle(req.account!, req.password!);
     }
 
+    // The SDK's automatic login with the sToken it saved from appLoginByPassword.
+    [HttpPost("/hkrpg_global/account/ma-passport/token/verifySToken")]
+    [HttpPost("/{gameKey}/account/ma-passport/token/verifySToken")]
+    public JsonResult VerifySToken([FromBody] VerifySTokenReqJson req)
+    {
+        Logger.Debug($"verifySToken: mid={req.mid} token_len={(req.token?.token?.Length ?? 0)}");
+        return new NewTokenLoginHandler().HandleGlobal(req.mid, req.token?.token);
+    }
+
     [HttpPost("/hkrpg_global/mdk/shield/api/verify")]
     [HttpPost("/{gameKey}/mdk/shield/api/verify")]
     public JsonResult Verify([FromBody] VerifyReqJson req)
