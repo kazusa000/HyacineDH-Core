@@ -221,12 +221,20 @@ public partial class PlayerInstance
     // A jigsaw board (JigsawSir) offers its puzzle once the pieces it uses are collected: its group graph waits for
     // them Closed, then enables the board (TriggerEnable sets up the client's "enter puzzle" button). The board's
     // PieceCount (default 3) says how many of JigsawPiece1..3 it uses (1030402's second board, G173, takes two).
-    // A locked board waits for its investigate interaction first (Locked -> Open), which sends the pieces out.
+    // A locked board waits for its investigate interaction first (Locked -> Open), which sends the pieces out: the
+    // client flies them off (TriggerPiecesFly) and the group graph turns the hidden ones (TriggerDisable) to
+    // TriggerEnable, from where the pickup interaction (11000) collects them. Mission-controlled pieces (1030501's
+    // G200) are picked up by the client once a mission group sends their custom string, so they need that state too.
     public async ValueTask CheckJigsawPieces(int groupId, SceneInstance? scene = null)
     {
         scene ??= SceneInstance;
         if (scene == null) return;
         var props = scene.GetEntitiesInGroup<EntityProp>(groupId);
+        if (props.Any(p => p.PropInfo.Name.Contains("JigsawSir") && p.State == PropStateEnum.Open))
+            foreach (var piece in props.Where(p => p.PropInfo.Name.StartsWith("JigsawPiece") &&
+                                                   p.State == PropStateEnum.TriggerDisable))
+                await piece.SetState(PropStateEnum.TriggerEnable);
+
         foreach (var board in props.Where(p => p.PropInfo.Name.Contains("JigsawSir") &&
                                                p.State is not (PropStateEnum.Closed or PropStateEnum.Locked or
                                                    PropStateEnum.TriggerEnable)))
