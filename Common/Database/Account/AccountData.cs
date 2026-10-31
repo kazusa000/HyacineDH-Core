@@ -34,6 +34,9 @@ public class AccountData : BaseDatabaseDataHelper
     public string GenerateDispatchToken()
     {
         DispatchToken = Crypto.CreateSessionKey(Uid.ToString());
+        // Saved now: the periodic save only covers players active in game, and the SDK logs in with this token
+        // (verifySToken) after a server restart.
+        DatabaseHelper.SaveDatabaseType(this);
         return DispatchToken;
     }
 
