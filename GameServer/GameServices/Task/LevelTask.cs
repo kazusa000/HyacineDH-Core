@@ -461,6 +461,10 @@ public class LevelTask(PlayerInstance player)
         return null;
     }
 
+    // A prop in an event state (EventClose/EventOpen) is moved by the client's own interaction with it. The server runs
+    // a group graph's tasks without its waits, so an event the graph sends after the player's interaction ran as soon as
+    // the group loaded: 103030217's origami bird (Tpl_OrigamiBird G116, Clt_TriggerPullSuccessHaveCamera) went from
+    // EventClose to Closed and lost its interaction.
     public async ValueTask<object?> TriggerEntityEvent(TaskConfigInfo act, SubMissionData subMission,
         GroupInfo? group = null)
     {
@@ -469,7 +473,8 @@ public class LevelTask(PlayerInstance player)
                 foreach (var entity in Player.SceneInstance?.Entities.Values.ToList() ?? [])
                     if (entity is EntityProp prop && prop.GroupId == group.Id &&
                         prop.InstId == triggerEntityEvent.InstanceID.GetValue())
-                        if (prop.Excel.PropStateList.Contains(PropStateEnum.Closed))
+                        if (prop.Excel.PropStateList.Contains(PropStateEnum.Closed) &&
+                            prop.State is not (PropStateEnum.EventClose or PropStateEnum.EventOpen))
                             await prop.SetState(PropStateEnum.Closed);
 
         return null;
