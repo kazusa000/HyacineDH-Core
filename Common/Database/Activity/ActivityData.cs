@@ -9,6 +9,28 @@ public class ActivityData : BaseDatabaseDataHelper
 {
     [SugarColumn(IsJson = true)] public TrialActivityData TrialActivityData { get; set; } = new();
     [SugarColumn(IsJson = true)] public LoginActivityData LoginActivityData { get; set; } = new();
+
+    // Movie racing (the cinema hamster-ball minigame) best results by racing type, then level.
+    // Nullable for databases created before these were kept.
+    [SugarColumn(IsNullable = true, IsJson = true, ColumnDataType = "TEXT")]
+    public Dictionary<int, Dictionary<int, MovieRacingResult>> MovieRacingData { get; set; } = [];
+}
+
+public class MovieRacingResult
+{
+    public uint Score { get; set; }
+    public uint Extra { get; set; } // PFLMNMAGFKP, kept as the client sends it
+
+    public FGCDAFADHIM ToProto(int type, int level)
+    {
+        return new FGCDAFADHIM
+        {
+            Type = (MovieRacingType)type,
+            Level = (uint)level,
+            HPKMEMFPLOH = Score,
+            PFLMNMAGFKP = Extra
+        };
+    }
 }
 
 public class LoginActivityData
