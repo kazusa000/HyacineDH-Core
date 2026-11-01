@@ -292,7 +292,7 @@ public class SceneInstance
         }
 
         groupData[groupId] = state;
-        await Player.SendPacket(new PacketGroupStateChangeScNotify(EntryId, groupId, state));
+        await Player.SendPacket(new PacketGroupStateChangeScNotify(EntryId, groupId, state, true));
         await Player.MissionManager!.HandleFinishType(MissionFinishTypeEnum.GroupState);
     }
 

@@ -11,7 +11,10 @@ public class PacketGroupStateChangeScNotify : BasePacket
     {
     }
 
-    public PacketGroupStateChangeScNotify(int entryId, int groupId, int state) : base(
+    // A change the client is to make carries the new state in field 15 as well, like the reply to its own request
+    // (HandlerGroupStateChangeCsReq): with GroupState alone the 4.1 client keeps the group where it was (1036002's
+    // D4 gashapon, G587, stayed in 0 and never played its gacha).
+    public PacketGroupStateChangeScNotify(int entryId, int groupId, int state, bool change = false) : base(
         CmdIds.GroupStateChangeScNotify)
     {
         var notify = new GroupStateChangeScNotify
@@ -20,7 +23,8 @@ public class PacketGroupStateChangeScNotify : BasePacket
             {
                 EntryId = (uint)entryId,
                 GroupId = (uint)groupId,
-                GroupState = (uint)state
+                GroupState = (uint)state,
+                LAPJHJBLNEP = change ? (uint)state : 0
             }
         };
 
