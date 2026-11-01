@@ -17,6 +17,15 @@ public class MissionHandlerPropState : MissionFinishTypeHandler
         if (player.SceneInstance?.FloorId != info.LevelFloorID) return; // not a same scene
         var prop = player.SceneInstance.GetEntitiesInGroup<EntityProp>(info.ParamInt1);
 
+        // A jigsaw piece the step waits for to be collected is hidden (TriggerDisable) until the step sends it out: the
+        // group graph's server event that does so (1036104's G277, ChangePropState) is stripped. From TriggerEnable the
+        // client picks it up (interaction 11000) when the mission's talk sends the piece's custom string; from
+        // TriggerDisable the pickup did not match and 103610403 stayed open.
+        foreach (var p in prop.Where(p => p.PropInfo.ID == info.ParamInt2 && p.State == PropStateEnum.TriggerDisable &&
+                                          p.PropInfo.Name.StartsWith("JigsawPiece") &&
+                                          info.ParamInt3 == (int)PropStateEnum.Closed))
+            await p.SetState(PropStateEnum.TriggerEnable);
+
         foreach (var p in prop)
             if (p.PropInfo.ID == info.ParamInt2 &&
                 ((int)p.State == info.ParamInt3 || await SettleByGroupGraph(player, info, p)))
