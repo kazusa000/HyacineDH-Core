@@ -1,4 +1,5 @@
 ﻿using HyacineCore.Server.Data;
+using HyacineCore.Server.Data.Config.Scene;
 using HyacineCore.Server.Database.Scene;
 using HyacineCore.Server.Enums.Mission;
 using HyacineCore.Server.Enums.Scene;
@@ -276,6 +277,50 @@ public partial class PlayerInstance
         prop.PropInfo.ValueSource?.Values.Find(x => x["Key"]?.ToString() == key) is { } entry
             ? entry["Value"] is { } value ? value.ToObject<T>() : default
             : fallback;
+
+    // A door that reports a mission step by opening (1030701's AirLock01_1, G37: its Clt_OnOpen on AirLockDoor2 sets
+    // MissionFCV_103070108, which the step's group waits for) is opened by the floor saved value the step before sets
+    // (MissionFV_103070108). The group graph's server-side wait for that value (LoopWaitServerFloorSavedValueChange)
+    // is stripped from the data, so the door is found by the custom value its open event sets.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, List<(string Value, int InstId)>>
+        MissionDoors = new();
+
+    private static List<(string Value, int InstId)> MissionDoorsOf(GroupInfo group) =>
+        MissionDoors.GetOrAdd(group.LevelGraph, path =>
+        {
+            var doors = new List<(string, int)>();
+            var file = Path.Combine(ConfigManager.Config.Path.ResourcePath, path);
+            if (string.IsNullOrEmpty(path) || !File.Exists(file)) return doors;
+            try
+            {
+                foreach (var wait in Newtonsoft.Json.Linq.JToken.Parse(File.ReadAllText(file))
+                             .SelectTokens("$..[?(@.EventName.Value == 'Clt_OnOpen')]"))
+                {
+                    var inst = wait.SelectToken("InstanceID.FixedValue.Value")?.ToObject<int>() ?? 0;
+                    foreach (var name in wait.SelectTokens("OnEvent[*].Name.Value"))
+                        if (name.ToString() is { } fcv && fcv.StartsWith("MissionFCV_") && inst > 0)
+                            doors.Add(("MissionFV_" + fcv["MissionFCV_".Length..], inst));
+                }
+            }
+            catch
+            {
+                // a graph that does not parse opens nothing
+            }
+
+            return doors;
+        });
+
+    public async ValueTask OpenMissionDoors(GroupInfo group, SceneInstance? scene = null)
+    {
+        scene ??= SceneInstance;
+        if (scene == null) return;
+        SceneData!.FloorSavedData.TryGetValue(scene.FloorId, out var saved);
+        foreach (var (value, instId) in MissionDoorsOf(group))
+            if (saved?.GetValueOrDefault(value) > 0)
+                foreach (var door in scene.GetEntitiesInGroup<EntityProp>(group.Id).Where(p =>
+                             p.InstId == instId && p.State is PropStateEnum.Closed or PropStateEnum.Locked))
+                    await door.SetState(PropStateEnum.Open);
+    }
 
     public async ValueTask SetPropTimeline(int propEntityId, PropTimelineInfo info)
     {

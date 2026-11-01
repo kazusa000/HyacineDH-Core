@@ -29,5 +29,11 @@ public class MissionHandlerSetFloorSavedValue : MissionFinishActionHandler
             foreach (var group in scene.FloorInfo?.Groups.Values.Where(g =>
                          g.PropList.Any(p => p.Name.Contains("JigsawSir"))) ?? [])
                 await player.CheckJigsawPieces(group.Id, scene);
+
+        // Doors a mission step opens by this value (1030701's G37) open now.
+        if (paramString[2].StartsWith("MissionFV_") && player.SceneInstance is { } current &&
+            current.FloorId == floor)
+            foreach (var group in current.FloorInfo?.Groups.Values.Where(g => current.Groups.Contains(g.Id)) ?? [])
+                await player.OpenMissionDoors(group, current);
     }
 }

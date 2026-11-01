@@ -218,6 +218,9 @@ public class SceneEntityLoader(SceneInstance scene)
         if (info.PropList.Any(p => p.Name.Contains("JigsawSir")))
             await Scene.Player.CheckJigsawPieces(info.Id, Scene);
 
+        // A door a mission step opened before this load (see OpenMissionDoors) is open again.
+        await Scene.Player.OpenMissionDoors(info, Scene);
+
         return entityList;
     }
 
