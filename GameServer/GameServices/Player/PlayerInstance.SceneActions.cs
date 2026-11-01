@@ -225,14 +225,35 @@ public partial class PlayerInstance
     // client flies them off (TriggerPiecesFly) and the group graph turns the hidden ones (TriggerDisable) to
     // TriggerEnable, from where the pickup interaction (11000) collects them. Mission-controlled pieces (1030501's
     // G200) are picked up by the client once a mission group sends their custom string, so they need that state too.
+    // Floor-saved-value boards and pieces (1030601's G372: UseFSV, UsePieceStateFSV) follow the values the missions
+    // set instead, which the stripped group graph (WaitServerFloorSavedValueChange) would apply: the board's
+    // UnlockWhenDisableFSVName unlocks it like its unlock custom string does (1920, TriggerDisable -> Locked, or
+    // 19100 -> TriggerEnable for TriggerDisableType 0), and a piece's PieceStateFSVName collects it (Closed).
     public async ValueTask CheckJigsawPieces(int groupId, SceneInstance? scene = null)
     {
         scene ??= SceneInstance;
         if (scene == null) return;
         var props = scene.GetEntitiesInGroup<EntityProp>(groupId);
+        SceneData!.FloorSavedData.TryGetValue(scene.FloorId, out var saved);
+        bool FsvSet(EntityProp p, string flag, string name) =>
+            Value<int>(p, flag) > 0 && Value<string>(p, name) is { Length: > 0 } key &&
+            saved?.GetValueOrDefault(key) > 0;
+        foreach (var piece in props.Where(p => p.PropInfo.Name.StartsWith("JigsawPiece") &&
+                                               p.State != PropStateEnum.Closed &&
+                                               FsvSet(p, "UsePieceStateFSV", "PieceStateFSVName")))
+            await piece.SetState(PropStateEnum.Closed);
+        foreach (var board in props.Where(p => p.PropInfo.Name.Contains("JigsawSir") &&
+                                               p.State == PropStateEnum.TriggerDisable &&
+                                               FsvSet(p, "UseFSV", "UnlockWhenDisableFSVName")))
+            // TriggerDisableType defaults to 1 in the board's graph when the group leaves it out.
+            await board.SetState(Value<float?>(board, "TriggerDisableType", 1) > 0.5
+                ? PropStateEnum.Locked
+                : PropStateEnum.TriggerEnable);
+
         if (props.Any(p => p.PropInfo.Name.Contains("JigsawSir") && p.State == PropStateEnum.Open))
             foreach (var piece in props.Where(p => p.PropInfo.Name.StartsWith("JigsawPiece") &&
-                                                   p.State == PropStateEnum.TriggerDisable))
+                                                   p.State == PropStateEnum.TriggerDisable &&
+                                                   Value<int>(p, "UsePieceStateFSV") <= 0))
                 await piece.SetState(PropStateEnum.TriggerEnable);
 
         foreach (var board in props.Where(p => p.PropInfo.Name.Contains("JigsawSir") &&
@@ -249,6 +270,12 @@ public partial class PlayerInstance
                 await board.SetState(PropStateEnum.TriggerEnable);
         }
     }
+
+    // A prop's group-level graph value (a SharedFloat without a Value is 0); fallback when the group leaves it out.
+    private static T? Value<T>(EntityProp prop, string key, T? fallback = default) =>
+        prop.PropInfo.ValueSource?.Values.Find(x => x["Key"]?.ToString() == key) is { } entry
+            ? entry["Value"] is { } value ? value.ToObject<T>() : default
+            : fallback;
 
     public async ValueTask SetPropTimeline(int propEntityId, PropTimelineInfo info)
     {

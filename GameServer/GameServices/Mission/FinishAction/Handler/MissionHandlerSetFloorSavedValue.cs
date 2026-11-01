@@ -23,5 +23,11 @@ public class MissionHandlerSetFloorSavedValue : MissionFinishActionHandler
             new PacketUpdateFloorSavedValueNotify(paramString[2], int.Parse(paramString[3]), player));
 
         player.TaskManager?.SceneTaskTrigger.TriggerFloor(plane, floor);
+
+        // Jigsaw boards and pieces driven by these values (1030601's G372) follow them now.
+        if (player.SceneInstance is { } scene && scene.FloorId == floor)
+            foreach (var group in scene.FloorInfo?.Groups.Values.Where(g =>
+                         g.PropList.Any(p => p.Name.Contains("JigsawSir"))) ?? [])
+                await player.CheckJigsawPieces(group.Id, scene);
     }
 }
