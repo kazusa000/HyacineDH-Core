@@ -164,8 +164,10 @@ public class SceneEntityLoader(SceneInstance scene)
              info.ForceUnloadCondition.IsTrue(missionData, false)) &&
             !forceLoad) return null; // check if group should be loaded forcefully
 
+        // With the floor's defaults, as the unload check above reads them: a condition on a value never set compares
+        // its default.
         if (!info.SavedValueCondition.IsTrue(
-                Scene.Player.SceneData!.FloorSavedData.GetValueOrDefault(Scene.FloorId, [])) &&
+                Scene.Player.SceneData!.GetFloorSavedValues(Scene.FloorId)) &&
             !forceLoad) // condition: Saved Value Condition
             return null;
 

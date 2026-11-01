@@ -76,6 +76,8 @@ public class SceneData : BaseDatabaseDataHelper
 
         var savedValues = new Dictionary<string, int>();
         foreach (var value in floor.FloorSavedValue) savedValues[value.Name] = GetFloorSavedValue(floorId, value.Name);
+        // Values a mission set without the floor declaring them still count.
+        foreach (var (key, value) in FloorSavedData.GetValueOrDefault(floorId, [])) savedValues[key] = value;
 
         return savedValues;
     }

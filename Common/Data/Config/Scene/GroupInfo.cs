@@ -182,14 +182,17 @@ public class SavedValueLoadCondition
         {
             // saved value
             var status = savedValue.GetValueOrDefault(condition.SavedValueName, 0);
-            if (condition.Operation == CompareTypeEnum.Unknow) continue;
+            // The level data leaves the default comparison, Equal, out: no condition names it, 1303 carry no
+            // Operation at all (1031701's G23 and G190, the free and the story movie game, load on GameOpen 2 and 1;
+            // skipping them loaded both, and the client's movie game broke on two game modes).
+            var operation = condition.Operation == CompareTypeEnum.Unknow ? CompareTypeEnum.Equal : condition.Operation;
 
             conditionChecks.Add(CheckFunc);
             continue;
 
             bool CheckFunc()
             {
-                return UtilTools.CompareNumberByOperationEnum(status, condition.Value, condition.Operation);
+                return UtilTools.CompareNumberByOperationEnum(status, condition.Value, operation);
             }
         }
 
