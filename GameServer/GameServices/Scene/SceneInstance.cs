@@ -316,6 +316,7 @@ public class SceneInstance
         floorSavedData[name] = value;
 
         await Player.SendPacket(new PacketUpdateFloorSavedValueNotify(name, value, Player));
+        await SyncGroupInfo(); // groups this value loads or unloads
         await ApplyFloorValueGroupStates(name, value);
         await Player.MissionManager!.HandleFinishType(MissionFinishTypeEnum.FloorSavedValue);
     }

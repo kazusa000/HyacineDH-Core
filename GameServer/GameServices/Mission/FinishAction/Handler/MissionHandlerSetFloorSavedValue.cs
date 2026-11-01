@@ -24,6 +24,11 @@ public class MissionHandlerSetFloorSavedValue : MissionFinishActionHandler
 
         player.TaskManager?.SceneTaskTrigger.TriggerFloor(plane, floor);
 
+        // Groups loaded by this value (1040103's G89, FSV_TimeRewind_TutorialFinish) load now: the step that waits on
+        // them was accepted, and its groups synced, before this finish action ran.
+        if (player.SceneInstance is { } loaded && loaded.FloorId == floor)
+            await loaded.SyncGroupInfo();
+
         // Groups whose state follows the value (1036002's D4 gashapon, G587) change state now.
         if (player.SceneInstance is { } changed && changed.FloorId == floor)
             await changed.ApplyFloorValueGroupStates(paramString[2], int.Parse(paramString[3]));
