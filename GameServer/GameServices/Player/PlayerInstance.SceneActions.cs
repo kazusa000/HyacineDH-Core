@@ -163,6 +163,10 @@ public partial class PlayerInstance
                 break;
         }
 
+        // Mission pieces are ordinary props (1036104's G277): collecting one can complete its board too.
+        if (prop.Excel.PropType != PropTypeEnum.PROP_MAZE_PUZZLE && prop.PropInfo.Name.StartsWith("JigsawPiece"))
+            await CheckJigsawPieces(prop.GroupId);
+
         // for door unlock. A door in a custom state (e.g. the Belobog fog door, CustomState01..05, one step per power
         // core) is advanced by the client's own interactions (101020..101023); opening it here would leave those
         // interactions, and the cores' graphs waiting on the door's state, without a match.
@@ -251,6 +255,16 @@ public partial class PlayerInstance
                 ? PropStateEnum.Locked
                 : PropStateEnum.TriggerEnable);
 
+        // A locked board with no investigate interaction whose group graph enables it once its pieces are collected:
+        // one predicate over all the pieces' states, then ChangePropState (1036104's mission board G277, pieces
+        // 300002 and 300003, for 103610405). The stripped task's target is gone; the board goes to TriggerEnable,
+        // where the client offers the puzzle, when those pieces are all Closed.
+        if (scene.FloorInfo?.Groups.GetValueOrDefault(groupId) is { } info && PieceGate(info) is { Count: > 0 } gate &&
+            gate.All(id => props.Any(p => p.PropInfo.ID == id && p.State == PropStateEnum.Closed)))
+            foreach (var board in props.Where(p => p.PropInfo.Name.Contains("JigsawSir") &&
+                                                   p.State == PropStateEnum.Locked))
+                await board.SetState(PropStateEnum.TriggerEnable);
+
         if (props.Any(p => p.PropInfo.Name.Contains("JigsawSir") && p.State == PropStateEnum.Open))
             foreach (var piece in props.Where(p => p.PropInfo.Name.StartsWith("JigsawPiece") &&
                                                    p.State == PropStateEnum.TriggerDisable &&
@@ -271,6 +285,32 @@ public partial class PlayerInstance
                 await board.SetState(PropStateEnum.TriggerEnable);
         }
     }
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, List<int>> PieceGates = new();
+
+    // The pieces a board's group graph checks together before it changes a prop's state (see CheckJigsawPieces).
+    private static List<int> PieceGate(GroupInfo group) =>
+        string.IsNullOrEmpty(group.LevelGraph)
+            ? []
+            : PieceGates.GetOrAdd(group.LevelGraph, path =>
+            {
+                try
+                {
+                    return Newtonsoft.Json.Linq.JToken.Parse(PuzzleFallback.ReadGraph(path)).SelectTokens("$..*")
+                        .OfType<Newtonsoft.Json.Linq.JObject>()
+                        .Where(t => (string?)t["$type"] == "RPG.GameCore.PredicateTaskList" &&
+                                    t["SuccessTaskList"] is Newtonsoft.Json.Linq.JArray tasks &&
+                                    tasks.Any(x => (string?)x["$type"] == "RPG.GameCore.ChangePropState"))
+                        .Select(t => t["Predicate"]?.SelectTokens("$..Targets[*]").Select(x => (int)x).ToList() ?? [])
+                        .FirstOrDefault(ids => ids.Count > 1 && ids.All(id =>
+                            group.PropList.Any(p => p.ID == id && p.Name.StartsWith("JigsawPiece")))) ?? [];
+                }
+                catch
+                {
+                    // a graph that does not parse gates nothing
+                    return [];
+                }
+            });
 
     // A prop's group-level graph value (a SharedFloat without a Value is 0); fallback when the group leaves it out.
     private static T? Value<T>(EntityProp prop, string key, T? fallback = default) =>
