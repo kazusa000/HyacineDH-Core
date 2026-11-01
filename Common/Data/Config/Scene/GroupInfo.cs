@@ -196,16 +196,14 @@ public class SavedValueLoadCondition
             }
         }
 
-        switch (Operation)
+        // A failed And or Or is false: falling through to the default made every condition true.
+        return Operation switch
         {
-            case OperationEnum.And when UtilTools.CheckAnd(conditionChecks, defaultResult):
-            case OperationEnum.Or when UtilTools.CheckOr(conditionChecks, defaultResult):
-                return true;
-            case OperationEnum.Not:
-                return !UtilTools.CheckOr(conditionChecks, defaultResult);
-            default:
-                return defaultResult;
-        }
+            OperationEnum.And => UtilTools.CheckAnd(conditionChecks, defaultResult),
+            OperationEnum.Or => UtilTools.CheckOr(conditionChecks, defaultResult),
+            OperationEnum.Not => !UtilTools.CheckOr(conditionChecks, defaultResult),
+            _ => defaultResult
+        };
     }
 }
 
