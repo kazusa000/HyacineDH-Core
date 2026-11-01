@@ -784,8 +784,16 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
 
     public void OnLoadScene(SceneInfo info)
     {
-        var targetSubIds =
-            Player.SceneInstance?.FloorInfo?.Groups.Values.SelectMany(x => x.RelatedMissionId).ToList() ?? [];
+        var groups = Player.SceneInstance?.FloorInfo?.Groups.Values.ToList() ?? [];
+        var targetSubIds = groups.SelectMany(x => x.RelatedMissionId).ToList();
+
+        // The client builds a floor's client-side mission groups (1031401's G174 NPCs) from this list when it enters
+        // the scene: without the running sub-missions that use them, a reload of the same floor leaves them out.
+        var groupIds = groups.Select(x => x.Id).ToHashSet();
+        foreach (var id in GetRunningSubMissionIdList())
+            if (GetSubMissionInfo(id) is { } running && running.LevelFloorID == Player.SceneInstance?.FloorId &&
+                running.GroupIDList?.Any(groupIds.Contains) == true)
+                targetSubIds.Add(id);
 
         HashSet<int> mainIds = [];
         foreach (var mainMission in GameData.MainMissionData.Values)
