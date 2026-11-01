@@ -318,6 +318,11 @@ public class SceneEntityLoader(SceneInstance scene)
             else
                 // elevator
                 prop.State = prop.Excel.PropType == PropTypeEnum.PROP_ELEVATOR ? PropStateEnum.Elevator1 : info.State;
+            // A prop the floor data gives no state starts in its first one: for an event prop (1032703's origami bird
+            // F20331001 G187 300001, whose step waits for EventClose -> EventOpen) that is EventClose, not Closed (the
+            // floor data never sets Closed on such a prop).
+            if (prop.State == PropStateEnum.Closed && excel.PropStateList.FirstOrDefault() == PropStateEnum.EventClose)
+                prop.State = PropStateEnum.EventClose;
         }
 
         var timelineData = Scene.Player.GetScenePropTimelineData(Scene.FloorId, group.Id, info.ID);
