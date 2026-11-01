@@ -84,12 +84,7 @@ public class SceneEntityLoader(SceneInstance scene)
                     Scene.Groups.Remove(group.Id);
                     unloadedGroups.Add(group.Id);
                 }
-                else if (ConfigManager.Config.ServerOption.EnableMission &&
-                         group.RelatedBattleId.Count > 0 &&
-                         !Scene.Player.MissionManager!.GetRunningSubMissionList()
-                             .Any(x =>
-                                 x.FinishType == MissionFinishTypeEnum.StageWin &&
-                                 group.RelatedBattleId.Contains(x.ParamInt1)))
+                else if (BattleGroupInactive(group))
                 {
                     foreach (var entity in Scene.Entities.Values.Where(entity => entity.GroupId == group.Id).ToList())
                     {
@@ -174,10 +169,7 @@ public class SceneEntityLoader(SceneInstance scene)
         if (Scene.Groups.Contains(info.Id) || Scene.Entities.Values.Any(x => x.GroupId == info.Id))
             return null;
 
-        if (ConfigManager.Config.ServerOption.EnableMission &&
-            info.RelatedBattleId.Count > 0 && !Scene.Player.MissionManager!.GetRunningSubMissionList().Any(x =>
-                x.FinishType == MissionFinishTypeEnum.StageWin && info.RelatedBattleId.Contains(x.ParamInt1)))
-            return null; // mission not activated
+        if (BattleGroupInactive(info)) return null; // mission not activated
 
         // TODO atmosphere conditions
 
@@ -224,6 +216,17 @@ public class SceneEntityLoader(SceneInstance scene)
         await Scene.Player.OpenMissionDoors(info, Scene);
 
         return entityList;
+    }
+
+    // A group whose graph starts a battle loads while a running sub-mission waits on winning that battle. A running
+    // sub-mission that lists the group itself also keeps it: 1032704's G68 holds Argenti, whose talk either starts
+    // battle 20331052 or ends in 103270415, while the competing 103270406 waits on 20331053.
+    private bool BattleGroupInactive(GroupInfo group)
+    {
+        if (!ConfigManager.Config.ServerOption.EnableMission || group.RelatedBattleId.Count == 0) return false;
+        return !Scene.Player.MissionManager!.GetRunningSubMissionList().Any(x =>
+            (x.FinishType == MissionFinishTypeEnum.StageWin && group.RelatedBattleId.Contains(x.ParamInt1)) ||
+            x.GroupIDList?.Contains(group.Id) == true);
     }
 
     public virtual async ValueTask<List<BaseGameEntity>?> LoadGroup(int groupId, bool sendPacket = true)
