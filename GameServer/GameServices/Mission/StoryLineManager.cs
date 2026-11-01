@@ -1,5 +1,6 @@
 ﻿using HyacineCore.Server.Data;
 using HyacineCore.Server.Database;
+using HyacineCore.Server.Database.Lineup;
 using HyacineCore.Server.Database.Quests;
 using HyacineCore.Server.Enums.Mission;
 using HyacineCore.Server.GameServer.Game.Player;
@@ -60,8 +61,8 @@ public class StoryLineManager(PlayerInstance player) : BasePlayerManager(player)
         StoryLineData.OldPos = Player.Data.Pos!;
         StoryLineData.OldRot = Player.Data.Rot!;
 
-        var avatarList = Player.LineupManager!.GetCurLineup()!.BaseAvatars!
-            .Select(x => x.SpecialAvatarId > 0 ? x.SpecialAvatarId / 10 : x.BaseAvatarId).ToList();
+        var current = Player.LineupManager!.GetCurLineup()!.BaseAvatars!;
+        var avatarList = TrialLineup(storyLineId, current) ?? AvatarIds(current);
 
         Player.LineupManager!.SetExtraLineup(ExtraLineupType.LineupHeliobus, avatarList);
 
@@ -128,7 +129,7 @@ public class StoryLineManager(PlayerInstance player) : BasePlayerManager(player)
         }
 
         Player.LineupManager!.SetExtraLineup(ExtraLineupType.LineupHeliobus,
-            lineInfo.Lineup.Select(x => x.SpecialAvatarId > 0 ? x.SpecialAvatarId : x.BaseAvatarId).ToList());
+            TrialLineup(storyLineId, lineInfo.Lineup) ?? AvatarIds(lineInfo.Lineup));
 
         StoryLineData.CurStoryLineId = lineInfo.StoryLineId;
         await Player.SendPacket(new PacketStoryLineInfoScNotify(Player));
@@ -246,6 +247,31 @@ public class StoryLineManager(PlayerInstance player) : BasePlayerManager(player)
 
     public async ValueTask OnLogin()
     {
+        // A line entered with the wrong team (before TrialLineup) gets its own team back.
+        if (StoryLineData.CurStoryLineId != 0 &&
+            Player.LineupManager!.GetCurLineup() is { BaseAvatars: { } avatars } lineup && lineup.IsExtraLineup() &&
+            TrialLineup(StoryLineData.CurStoryLineId, avatars) is { } trial)
+        {
+            Log.Info($"story line {StoryLineData.CurStoryLineId} team: {string.Join(",", trial)}");
+            Player.LineupManager.SetExtraLineup(ExtraLineupType.LineupHeliobus, trial);
+        }
+
         await Player.SendPacket(new PacketStoryLineInfoScNotify(Player));
+    }
+
+    // A line with its own trial team (StroyLineTrialAvatarData: 1031101 is 1021304 alone) plays with that team, not
+    // the one the player had: the client looks the line's trial avatars up for its team screen and fails every frame
+    // (TeamEditFilter, GetTrialInstanceID on nil) when the lineup lacks them. Null when the team already has one.
+    private static List<int>? TrialLineup(int storyLineId, List<LineupAvatarInfo> lineup)
+    {
+        if (!GameData.StroyLineTrialAvatarDataData.TryGetValue(storyLineId, out var trial) ||
+            trial.InitTrialAvatarList.Count == 0) return null;
+        if (lineup.Any(x => trial.TrialAvatarList.Contains(x.SpecialAvatarId))) return null;
+        return trial.InitTrialAvatarList.ToList();
+    }
+
+    private static List<int> AvatarIds(List<LineupAvatarInfo> lineup)
+    {
+        return lineup.Select(x => x.SpecialAvatarId > 0 ? x.SpecialAvatarId : x.BaseAvatarId).ToList();
     }
 }
