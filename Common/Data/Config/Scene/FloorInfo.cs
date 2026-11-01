@@ -79,8 +79,9 @@ public class FloorInfo
                     prop.CommonConsole = true;
                 }
 
-                // Clear for garbage collection
-                prop.ValueSource = null;
+                // Clear for garbage collection; jigsaw boards and pieces keep their values (PieceCount and the
+                // floor saved values they follow, read by CheckJigsawPieces).
+                if (!json.Contains("JigsawPuzzle")) prop.ValueSource = null;
                 prop.InitLevelGraph = null;
             }
 
