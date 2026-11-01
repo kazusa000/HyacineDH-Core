@@ -225,6 +225,7 @@ public class SceneInstance
             Components.Add(new RainbowSceneComponent(this));
 
         System.Threading.Tasks.Task.Run(async () => { await EntityLoader.LoadEntity(); }).Wait();
+        System.Threading.Tasks.Task.Run(async () => { await UnlockPuzzleGroups(false); }).Wait();
 
         Player.TaskManager?.SceneTaskTrigger.TriggerFloor(PlaneId, FloorId, Groups);
 
@@ -449,9 +450,35 @@ public class SceneInstance
                 SceneGroupRefreshType.Loaded));
     }
 
-    public ValueTask SyncGroupInfo()
+    public async ValueTask SyncGroupInfo()
     {
-        return EntityLoader?.SyncEntity() ?? ValueTask.CompletedTask;
+        if (EntityLoader != null) await EntityLoader.SyncEntity();
+        await UnlockPuzzleGroups();
+    }
+
+    // An oracle tablet that opens later in the story (1040105's G215 for the great door) starts locked
+    // (SGP_PuzzleState default 2), and "调查" opens nothing. Its group graph unlocks it once its floor saved values match
+    // (FSV_OracleMachine_Unlock_1 == 1 and FSV_OracleMachine_Door_1 == 0) with SetServerGroupProperty, whose name and
+    // value are stripped. The tablet goes to 0, the state an unlocked one starts in (G245), when such a branch holds.
+    private const string PuzzleStateProperty = "SGP_PuzzleState";
+    private const int PuzzleLocked = 2;
+
+    private async ValueTask UnlockPuzzleGroups(bool notify = true)
+    {
+        var values = Player.SceneData!.GetFloorSavedValues(FloorId);
+        foreach (var group in FloorInfo?.Groups.Values ?? [])
+        {
+            if (group.GroupPropertyMap.Values.All(x => x.Name != PuzzleStateProperty) ||
+                GetGroupProperty(group.Id, PuzzleStateProperty) != PuzzleLocked ||
+                !PuzzleFallback.FloorValueUnlocks(group).Any(branch =>
+                    branch.All(x => values.GetValueOrDefault(x.Name) == x.Value))) continue;
+            Logger.GetByClassName().Info($"Group {group.Id} on floor {FloorId}: floor values unlock its puzzle");
+            if (notify)
+                await UpdateGroupProperty(group.Id, PuzzleStateProperty, 0);
+            else
+                // Before the scene is sent: the scene info carries the saved value.
+                Player.SceneData.GroupPropertyData[FloorId][group.Id][PuzzleStateProperty] = 0;
+        }
     }
 
     public async ValueTask OnUseSkill(SceneCastSkillCsReq req)

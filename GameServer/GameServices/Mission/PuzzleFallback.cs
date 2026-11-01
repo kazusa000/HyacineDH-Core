@@ -175,6 +175,54 @@ public static class PuzzleFallback
         });
     }
 
+    private static readonly ConcurrentDictionary<string, List<List<(string, int)>>> FloorValueUnlockBranches = new();
+
+    // The floor saved value conditions of a group graph's branches that set a server group property it does not name
+    // (WaitServerFloorSavedValueChange, then a PredicateTaskList of ByCompareFloorSavedValue, alone or under ByAnd,
+    // whose success is a bare SetServerGroupProperty), each branch as (value name, value) pairs that must all hold.
+    public static List<List<(string Name, int Value)>> FloorValueUnlocks(GroupInfo group)
+    {
+        if (string.IsNullOrEmpty(group.LevelGraph)) return [];
+        return FloorValueUnlockBranches.GetOrAdd(group.LevelGraph, path =>
+        {
+            var text = ReadGraph(path);
+            if (!text.Contains("WaitServerFloorSavedValueChange") || !text.Contains("SetServerGroupProperty")) return [];
+            try
+            {
+                List<(string, int)>? Compare(JToken? p)
+                {
+                    if (p is not JObject o) return null;
+                    if ((string?)o["$type"] == "RPG.GameCore.ByAnd" && o["PredicateList"] is JArray list)
+                    {
+                        var all = list.Select(Compare).ToList();
+                        return all.Any(x => x == null) ? null : all.SelectMany(x => x!).ToList();
+                    }
+
+                    if ((string?)o["$type"] != "RPG.GameCore.ByCompareFloorSavedValue" ||
+                        o.Properties().Any(x => x.Name is not ("$type" or "Name" or "DynamicName" or "CompareValue")))
+                        return null;
+                    var name = (string?)o["DynamicName"]?["Value"] ?? (string?)o["Name"];
+                    return string.IsNullOrEmpty(name) ? null : [(name, (int?)o["CompareValue"] ?? 0)];
+                }
+
+                return JToken.Parse(text).SelectTokens("$..*").OfType<JObject>()
+                    .Where(t => (string?)t["$type"] == "RPG.GameCore.PredicateTaskList" &&
+                                t["SuccessTaskList"] is JArray tasks && tasks.Count > 0 &&
+                                tasks.All(x => x is JObject task && (string?)task["$type"] ==
+                                    "RPG.GameCore.SetServerGroupProperty" && task.Count == 1))
+                    .Select(t => Compare(t["Predicate"]))
+                    .Where(x => x is { Count: > 0 })
+                    .Select(x => x!)
+                    .ToList();
+            }
+            catch
+            {
+                // a graph that does not parse unlocks nothing
+                return [];
+            }
+        });
+    }
+
     // Groups whose graph mentions the saved value; without any, the groups the sub-mission lists.
     public static HashSet<int> PuzzleGroups(FloorInfo? floor, SubMissionInfo info)
     {
