@@ -85,6 +85,23 @@ public class PacketSceneGroupRefreshScNotify : BasePacket
         SetData(proto);
     }
 
+    // A loaded group's new state as an incremental refresh, which carries the group state like a Loaded one.
+    public static PacketSceneGroupRefreshScNotify ForGroupState(SceneInstance scene, int groupId, int state)
+    {
+        var proto = new SceneGroupRefreshScNotify
+        {
+            FloorId = (uint)scene.FloorId,
+            DimensionId = (uint)((scene.EntityLoader as StoryLineEntityLoader)?.DimensionId ?? 0)
+        };
+        proto.GroupRefreshList.Add(new GroupRefreshInfo
+        {
+            GroupId = (uint)groupId,
+            State = (uint)state,
+            RefreshType = SceneGroupRefreshType.Afibfmafncc
+        });
+        return new PacketSceneGroupRefreshScNotify(proto);
+    }
+
     public static PacketSceneGroupRefreshScNotify ForGroupChanges(SceneInstance scene,
         IEnumerable<int> loadedGroupIds, IEnumerable<int>? unloadedGroupIds = null)
     {

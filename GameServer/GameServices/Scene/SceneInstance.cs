@@ -335,6 +335,8 @@ public class SceneInstance
             if (current == value || !group.GroupStateList.Any(x => x.SrcState == current && x.DstState == value))
                 continue;
             await UpdateGroupState(group.Id, value);
+            if (Groups.Contains(group.Id))
+                await Player.SendPacket(PacketSceneGroupRefreshScNotify.ForGroupState(this, group.Id, value));
         }
     }
 
