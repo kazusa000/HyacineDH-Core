@@ -31,6 +31,7 @@ public class StoryLineManager(PlayerInstance player) : BasePlayerManager(player)
             if (missions.GetSubMissionStatus(storyLine.BeginCondition.Param) == MissionPhaseEnum.None) continue;
             if (missions.GetSubMissionStatus(storyLine.EndCondition.Param) == MissionPhaseEnum.Finish) continue;
             if (StoryLineData.RunningStoryLines.ContainsKey(storyLine.StoryLineID)) continue;
+            if (EnteredByOwnAction(storyLine.StoryLineID)) continue;
             await InitStoryLine(storyLine.StoryLineID);
             return;
         }
@@ -245,8 +246,41 @@ public class StoryLineManager(PlayerInstance player) : BasePlayerManager(player)
         }
     }
 
+    // A line whose beginning sub-mission enters it with its own ChangeStoryLine finish action (1031601: 103150117
+    // shows message 1307600 on 20321001 first, then switches to Acheron) is entered by that action, not when the
+    // sub-mission is taken. True while that sub-mission is still running.
+    private bool EnteredByOwnAction(int storyLineId)
+    {
+        if (!GameData.StoryLineData.TryGetValue(storyLineId, out var storyLine)) return false;
+        var subId = storyLine.BeginCondition.Param;
+        if (Player.MissionManager!.GetSubMissionStatus(subId) != MissionPhaseEnum.Accept) return false;
+        return Player.MissionManager.GetSubMissionInfo(subId)?.FinishActionList?.Any(action =>
+            action.FinishActionType == FinishActionTypeEnum.ChangeStoryLine &&
+            action.FinishActionPara.FirstOrDefault() == storyLineId) == true;
+    }
+
     public async ValueTask OnLogin()
     {
+        // A line entered as soon as its beginning sub-mission was taken (before EnteredByOwnAction) is left again,
+        // back where the player was, so the sub-mission can play out and enter it itself.
+        if (StoryLineData.CurStoryLineId is var early and not 0 && EnteredByOwnAction(early))
+        {
+            var (planeId, floorId, entryId) =
+                (StoryLineData.OldPlaneId, StoryLineData.OldFloorId, StoryLineData.OldEntryId);
+            var (pos, rot) = (StoryLineData.OldPos, StoryLineData.OldRot);
+            Log.Info($"story line {early} was entered before its sub-mission entered it; leaving it");
+            await FinishStoryLine(tp: false);
+            StoryLineData.RunningStoryLines.Remove(early);
+            if (floorId != 0)
+            {
+                Player.Data.PlaneId = planeId;
+                Player.Data.FloorId = floorId;
+                Player.Data.EntryId = entryId;
+                Player.Data.Pos = pos;
+                Player.Data.Rot = rot;
+            }
+        }
+
         // A line entered with the wrong team (before TrialLineup) gets its own team back.
         if (StoryLineData.CurStoryLineId != 0 &&
             Player.LineupManager!.GetCurLineup() is { BaseAvatars: { } avatars } lineup && lineup.IsExtraLineup() &&
