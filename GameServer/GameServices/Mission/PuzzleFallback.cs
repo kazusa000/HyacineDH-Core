@@ -144,6 +144,37 @@ public static class PuzzleFallback
             .Select(x => (x.FinishActionParaString[1], x.FinishActionParaString[2], int.Parse(x.FinishActionParaString[3])))
             .ToHashSet());
 
+    private static readonly ConcurrentDictionary<string, HashSet<(string, int)>> FloorValueBranches = new();
+
+    // The (floor saved value, value) branches of a group graph that change the group's state when the value changes
+    // (LoopWaitServerFloorSavedValueChange, then ByCompareFloorSavedValue branches that run ChangeGroupState).
+    public static HashSet<(string Name, int Value)> FloorValueStates(GroupInfo group)
+    {
+        if (string.IsNullOrEmpty(group.LevelGraph)) return [];
+        return FloorValueBranches.GetOrAdd(group.LevelGraph, path =>
+        {
+            var text = ReadGraph(path);
+            if (!text.Contains("LoopWaitServerFloorSavedValueChange") || !text.Contains("ChangeGroupState")) return [];
+            try
+            {
+                return JToken.Parse(text).SelectTokens("$..*").OfType<JObject>()
+                    .Where(t => (string?)t["$type"] == "RPG.GameCore.PredicateTaskList" &&
+                                t["Predicate"] is JObject p &&
+                                (string?)p["$type"] == "RPG.GameCore.ByCompareFloorSavedValue" &&
+                                p.Properties().All(x => x.Name is "$type" or "Name" or "CompareValue") &&
+                                t["SuccessTaskList"] is JArray tasks &&
+                                tasks.Any(x => (string?)x["$type"] == "RPG.GameCore.ChangeGroupState"))
+                    .Select(t => ((string?)t["Predicate"]!["Name"] ?? "", (int?)t["Predicate"]!["CompareValue"] ?? 0))
+                    .ToHashSet();
+            }
+            catch
+            {
+                // a graph that does not parse changes no state
+                return [];
+            }
+        });
+    }
+
     // Groups whose graph mentions the saved value; without any, the groups the sub-mission lists.
     public static HashSet<int> PuzzleGroups(FloorInfo? floor, SubMissionInfo info)
     {

@@ -24,6 +24,10 @@ public class MissionHandlerSetFloorSavedValue : MissionFinishActionHandler
 
         player.TaskManager?.SceneTaskTrigger.TriggerFloor(plane, floor);
 
+        // Groups whose state follows the value (1036002's D4 gashapon, G587) change state now.
+        if (player.SceneInstance is { } changed && changed.FloorId == floor)
+            await changed.ApplyFloorValueGroupStates(paramString[2], int.Parse(paramString[3]));
+
         // Jigsaw boards and pieces driven by these values (1030601's G372) follow them now.
         if (player.SceneInstance is { } scene && scene.FloorId == floor)
             foreach (var group in scene.FloorInfo?.Groups.Values.Where(g =>

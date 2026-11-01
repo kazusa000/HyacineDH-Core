@@ -316,7 +316,26 @@ public class SceneInstance
         floorSavedData[name] = value;
 
         await Player.SendPacket(new PacketUpdateFloorSavedValueNotify(name, value, Player));
+        await ApplyFloorValueGroupStates(name, value);
         await Player.MissionManager!.HandleFinishType(MissionFinishTypeEnum.FloorSavedValue);
+    }
+
+    // A group graph that follows a floor saved value (one ByCompareFloorSavedValue branch per value, each running
+    // ChangeGroupState) is stripped of the state each branch changes to. The branches compare the numbers the group's
+    // states go by, so the group goes to the state of the value's number when its state table has that change.
+    // 1036002's D4 gashapon (G587, FSV_GashaponD4): 103600218's coin sets 1, and the group's 0 -> 1 plays the gacha
+    // that rolls the capsule out to the exit, where picking it up sets 2 for 103600214. Only a change of the value
+    // does this: a group loaded in the changed state shows the machine's last frame, without the capsule.
+    public async ValueTask ApplyFloorValueGroupStates(string name, int value)
+    {
+        foreach (var group in FloorInfo?.Groups.Values ?? [])
+        {
+            if (!PuzzleFallback.FloorValueStates(group).Contains((name, value))) continue;
+            var current = GetGroupState(group.Id);
+            if (current == value || !group.GroupStateList.Any(x => x.SrcState == current && x.DstState == value))
+                continue;
+            await UpdateGroupState(group.Id, value);
+        }
     }
 
     public int GetFloorSavedValue(string name)
