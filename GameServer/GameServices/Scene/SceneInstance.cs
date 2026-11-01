@@ -337,6 +337,26 @@ public class SceneInstance
             await UpdateGroupState(group.Id, value);
             if (Groups.Contains(group.Id))
                 await Player.SendPacket(PacketSceneGroupRefreshScNotify.ForGroupState(this, group.Id, value));
+            if (value == GashaponRewardState) await RankGashaponCapsules(group);
+        }
+    }
+
+    // A gashapon's exit (MazeProp 103086) holds the capsule the gacha rolls out. Its graph enables the pickup and sends
+    // it (PropReqInteract) only while the exit is in a rank state (CustomState01..03); the stripped group graph that
+    // ranks it with the gacha is gone, so the exit stayed Closed and picking up the capsule sent nothing (103600214).
+    // The group's reward state (1, RewardToast) gives the capsule rank 1.
+    private const int GashaponExitPropId = 103086;
+    private const int GashaponRewardState = 1;
+
+    private async ValueTask RankGashaponCapsules(GroupInfo group)
+    {
+        foreach (var exit in group.PropList.Where(p => p.PropID == GashaponExitPropId))
+        {
+            var entity = GetEntitiesInGroup<EntityProp>(group.Id).FirstOrDefault(p => p.PropInfo.ID == exit.ID);
+            if (entity == null)
+                Player.SetScenePropData(FloorId, group.Id, exit.ID, PropStateEnum.CustomState01);
+            else if (entity.State == PropStateEnum.Closed)
+                await entity.SetState(PropStateEnum.CustomState01);
         }
     }
 
