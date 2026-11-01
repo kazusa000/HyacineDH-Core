@@ -33,7 +33,7 @@ public class PacketGetMissionDataScRsp : BasePacket
             if (player.MissionManager!.GetMainMissionStatus(mission) == MissionPhaseEnum.Accept)
                 proto.MainMissionList.Add(player.MissionManager.MainMissionToProto(mission));
 
-        foreach (var mission in GameData.SubMissionInfoData.Keys.Concat(GameData.SubMissionData.Keys))
+        foreach (var mission in GameData.SubMissionInfoData.Keys.Concat(GameData.SubMissionData.Keys).Distinct())
             if (player.MissionManager!.GetSubMissionStatus(mission) == MissionPhaseEnum.Accept)
                 proto.MissionList.Add(new Proto.Mission
                 {
