@@ -219,14 +219,16 @@ public class SceneEntityLoader(SceneInstance scene)
     }
 
     // A group whose graph starts a battle loads while a running sub-mission waits on winning that battle. A running
-    // sub-mission that lists the group itself also keeps it: 1032704's G68 holds Argenti, whose talk either starts
-    // battle 20331052 or ends in 103270415, while the competing 103270406 waits on 20331053.
+    // sub-mission on this floor that lists the group itself also keeps it: 1032704's G68 holds Argenti, whose talk
+    // either starts battle 20331052 or ends in 103270415, while the competing 103270406 waits on 20331053. Group IDs
+    // are per floor: 404031108 lists its own G109 on F10304001, which must not load 1032902's final battle G109 at
+    // F20332001 (its district trigger then starts 20332050 again after every fight of 103290219's opening).
     private bool BattleGroupInactive(GroupInfo group)
     {
         if (!ConfigManager.Config.ServerOption.EnableMission || group.RelatedBattleId.Count == 0) return false;
         return !Scene.Player.MissionManager!.GetRunningSubMissionList().Any(x =>
             (x.FinishType == MissionFinishTypeEnum.StageWin && group.RelatedBattleId.Contains(x.ParamInt1)) ||
-            x.GroupIDList?.Contains(group.Id) == true);
+            (x.LevelFloorID == Scene.FloorId && x.GroupIDList?.Contains(group.Id) == true));
     }
 
     public virtual async ValueTask<List<BaseGameEntity>?> LoadGroup(int groupId, bool sendPacket = true)
