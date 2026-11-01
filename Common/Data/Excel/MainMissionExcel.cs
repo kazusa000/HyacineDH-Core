@@ -25,6 +25,9 @@ public class MainMissionExcel : ExcelResource
     public int RewardID { get; set; }
     public List<int> SubRewardList { get; set; } = [];
 
+    // The mission the client tracks after this one (1031001 -> 1031101).
+    public int NextTrackMainMission { get; set; }
+
     [JsonIgnore] public MissionInfo MissionInfo { get; protected set; } = new();
     [JsonIgnore] public List<int> SubMissionIds { get; set; } = [];
 
