@@ -1,4 +1,5 @@
 using Google.Protobuf;
+using Newtonsoft.Json.Linq;
 using HyacineCore.Server.Data;
 using HyacineCore.Server.Database.Scene;
 using HyacineCore.Server.Database;
@@ -90,17 +91,43 @@ public class MapRotationManager(PlayerInstance player)
             EFMLPKJCPBJ = { state.EFMLPKJCPBJ }, HNPDHHKNKMB = { state.HNPDHHKNKMB }
         });
 
+    private string Resource() => player.SceneInstance == null ? "" : Path.Combine(ConfigManager.Config.Path.ResourcePath,
+        "Config", "LevelOutput", "RotatableRegion", $"RotatableRegion_Floor_{player.SceneInstance.FloorId}.json");
+
+    // KMINHNLKPIC is the room's pose: the index into the region's Poses whose rotation (RotationAxis, RotationAngle
+    // in degrees) the room is turned to. RotateMapCsReq carries only the rotation, so the pose is looked up here; the
+    // client rebuilds the room from it after a battle, and with 0 it fell back to pose 0 with the room still turned
+    // (1030701, 1031101), leaving the volumes of the real pose unusable.
+    private uint? Pose(int region, Vector4 rotation)
+    {
+        var resource = Resource();
+        if (!File.Exists(resource)) return null;
+        if (JObject.Parse(File.ReadAllText(resource))["RotatableRegions"] is not JArray regions ||
+            region < 0 || region >= regions.Count || regions[region]["Poses"] is not JArray poses) return null;
+        for (var i = 0; i < poses.Count; i++)
+        {
+            var axis = poses[i]["RotationAxis"];
+            var half = (poses[i]["RotationAngle"]?.Value<double>() ?? 0) * Math.PI / 360;
+            var sin = Math.Sin(half);
+            var dot = (axis?["X"]?.Value<double>() ?? 0) * sin * rotation.X +
+                      (axis?["Y"]?.Value<double>() ?? 0) * sin * rotation.Y +
+                      (axis?["Z"]?.Value<double>() ?? 0) * sin * rotation.Z + Math.Cos(half) * rotation.W;
+            if (Math.Abs(dot) > 0.999) return (uint)i;
+        }
+        return null;
+    }
+
     public async ValueTask Enter(EnterMapRotationRegionCsReq req)
     {
-        var resource = player.SceneInstance == null ? "" : Path.Combine(ConfigManager.Config.Path.ResourcePath,
-            "Config", "LevelOutput", "RotatableRegion", $"RotatableRegion_Floor_{player.SceneInstance.FloorId}.json");
-        if (!ValidMotion(req.Motion) || !File.Exists(resource))
+        if (!ValidMotion(req.Motion) || !File.Exists(Resource()))
         {
             await Send(CmdIds.EnterMapRotationRegionScRsp, new EnterMapRotationRegionScRsp { Retcode = (uint)Retcode.RetReqParaInvalid });
             return;
         }
         var floor = Floor(true)!;
-        var key = $"{req.KMINHNLKPIC}:{req.LDIJAKPKLIN}";
+        // The room is the region alone; the first slot once held KMINHNLKPIC (the pose) and stays 0 so saved rooms
+        // keep their keys.
+        var key = $"0:{req.LDIJAKPKLIN}";
         if (!floor.Rooms.ContainsKey(key) && floor.Rooms.Count >= 128)
         {
             await Send(CmdIds.EnterMapRotationRegionScRsp, new EnterMapRotationRegionScRsp { Retcode = (uint)Retcode.RetReqParaInvalid });
@@ -130,6 +157,7 @@ public class MapRotationManager(PlayerInstance player)
             return;
         }
         state.RogueMap = req.RogueMap.Clone();
+        state.KMINHNLKPIC = Pose(state.LDIJAKPKLIN, req.RogueMap.CBGJJJMGACI) ?? state.KMINHNLKPIC;
         Save(state);
         await Send(CmdIds.RotateMapScRsp, new RotateMapScRsp { Motion = req.Motion.Clone(), ClientPosVersion = Move(req.Motion) });
         await Notify(state);
@@ -146,6 +174,7 @@ public class MapRotationManager(PlayerInstance player)
         // The reset request carries the client's target transform and motion; do not replace it
         // with a made-up origin. Reset only this room, not other rooms on the same floor.
         state.RogueMap = req.RogueMap?.Clone() ?? EmptyState().RogueMap;
+        state.KMINHNLKPIC = Pose(state.LDIJAKPKLIN, state.RogueMap.CBGJJJMGACI) ?? 0;
         state.EFMLPKJCPBJ.Clear();
         state.HNPDHHKNKMB.Clear();
         state.EnergyInfo.CurNum = Capacity;
