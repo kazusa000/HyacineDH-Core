@@ -1,5 +1,7 @@
 using HyacineCore.Server.Data;
 using HyacineCore.Server.Database.Scene;
+using HyacineCore.Server.Enums.Scene;
+using HyacineCore.Server.GameServer.Game.Scene.Entity;
 using HyacineCore.Server.Proto;
 using HyacineCore.Server.Util;
 
@@ -64,5 +66,20 @@ public class SwitchHandComponent(PlayerInstance player) : BasePlayerComponent(pl
         dbInfo.ByteValue = info.PMIEJBIDLIL.ToByteArray();
 
         return (Retcode.RetSucc, dbInfo);
+    }
+
+    // The hand catching or laying a catchable prop (1040106's scale in G51): the update names the prop and the
+    // operation, and the prop's state follows it. Its graph (SwitchHandCatchable) reads Open as holding the item and
+    // Closed as an empty spot to lay one on; the group graph's listeners for Open -> Closed offer the plate's slots.
+    public async ValueTask HandleItemOp(GOPPKKEGPPG? op)
+    {
+        if (op == null || op.PHOMPFCPNML == 0 || Player.SceneInstance is not { } scene) return;
+        var prop = scene.Entities.Values.OfType<EntityProp>()
+            .FirstOrDefault(p => p.GroupId == op.GroupId && p.InstId == op.PHOMPFCPNML);
+        Logger.GetByClassName().Info(
+            $"Hand {op.OpType} prop {op.GroupId}:{op.PHOMPFCPNML} ({op.NLOPDLONLAF}) state {prop?.State}");
+        if (prop == null) return;
+        if (op.OpType == JLGANPHGGHB.Okgfofadjmd) await prop.SetState(PropStateEnum.Closed);
+        else if (op.OpType == JLGANPHGGHB.Gfhldkelcmi) await prop.SetState(PropStateEnum.Open);
     }
 }

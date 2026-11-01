@@ -21,10 +21,25 @@ public class EraFlipperManager(PlayerInstance player)
 
     public async ValueTask Change(ChangeEraFlipperDataCsReq req)
     {
+        // Each region keeps its era across logins (1040106's scale room: its hand controllers only show in the
+        // flipped era); GetEraFlipperData hands them back.
+        foreach (var region in req.Data?.EGNOCAJJKIO ?? [])
+            if (region.State == 0) player.SceneData!.EraFlipperData.RegionState.Remove((int)region.LDIJAKPKLIN);
+            else player.SceneData!.EraFlipperData.RegionState[(int)region.LDIJAKPKLIN] = (int)region.State;
         var rsp = new BasePacket((ushort)CmdIds.ChangeEraFlipperDataScRsp);
         rsp.SetData(new ChangeEraFlipperDataScRsp { Data = req.Data ?? new LNMMKIBKCMP() });
         await player.SendPacket(rsp);
         if (req.Data?.EGNOCAJJKIO.Count > 0) await CountFlip();
+    }
+
+    public async ValueTask Get()
+    {
+        var data = new LNMMKIBKCMP();
+        foreach (var (region, state) in player.SceneData!.EraFlipperData.RegionState)
+            data.EGNOCAJJKIO.Add(new KPENFKEBGNE { LDIJAKPKLIN = (uint)region, State = (uint)state });
+        var rsp = new BasePacket((ushort)CmdIds.GetEraFlipperDataScRsp);
+        rsp.SetData(new GetEraFlipperDataScRsp { Data = data });
+        await player.SendPacket(rsp);
     }
 
     private async ValueTask CountFlip()

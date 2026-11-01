@@ -18,5 +18,6 @@ public class HandlerSwitchHandUpdateCsReq : Handler
             await connection.SendPacket(new PacketSwitchHandUpdateScRsp(info.Item1, req.DEOGNFPDHHN, req.FJEKJOFCGBJ));
         else
             await connection.SendPacket(new PacketSwitchHandUpdateScRsp(info.Item2, req.DEOGNFPDHHN, req.FJEKJOFCGBJ));
+        await component.HandleItemOp(req.FJEKJOFCGBJ);
     }
 }
