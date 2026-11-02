@@ -156,7 +156,10 @@ public class RaidManager : BasePlayerManager
 
             await Player.MissionManager!.AcceptMainMission(firstMission);
 
-            await Player.EnterScene(entranceId, 0, false);
+            // A raid a story line leads into (40412 in 1040207, 40403 in 1040113) runs inside that line: leaving
+            // it would swap the line's lineup out and the client is left without its player.
+            await Player.EnterScene(entranceId, 0, false,
+                Player.StoryLineManager?.StoryLineData.CurStoryLineId ?? 0);
 
             record = new RaidRecord
             {

@@ -38,14 +38,31 @@ public class StoryLineManager(PlayerInstance player) : BasePlayerManager(player)
 
         // A line another line switched away from is suspended. When no line is active and the suspended
         // line's show range is still open, the player is back in it.
-        // A raid replaces the story line while it runs, so none resumes until the raid is left.
-        if (Player.RaidManager?.RaidData.CurRaidId > 0) return;
+        await ResumeSuspendedLine();
+    }
+
+    // A raid a line leads into runs inside it, so in a raid the line resumes where the player is, with its team,
+    // instead of taking the player back to where the line was saved (out of the raid).
+    private async ValueTask ResumeSuspendedLine()
+    {
+        var missions = Player.MissionManager!;
         foreach (var storyLineId in StoryLineData.RunningStoryLines.Keys.ToList())
         {
             if (GameData.StoryLineData.GetValueOrDefault(storyLineId)?.ShowRange() is not { } range) continue;
             if (missions.GetSubMissionStatus(range.From) == MissionPhaseEnum.None) continue;
             if (missions.GetSubMissionStatus(range.To) == MissionPhaseEnum.Finish) continue;
             Log.Info($"resume story line {storyLineId}");
+            if (Player.RaidManager?.RaidData.CurRaidId > 0)
+            {
+                var lineup = StoryLineData.RunningStoryLines[storyLineId].Lineup;
+                Player.LineupManager!.SetExtraLineup(ExtraLineupType.LineupHeliobus,
+                    TrialLineup(storyLineId, lineup) ?? AvatarIds(lineup));
+                StoryLineData.CurStoryLineId = storyLineId;
+                await Player.SendPacket(new PacketStoryLineInfoScNotify(Player));
+                await Player.SendPacket(new PacketSyncLineupNotify(Player.LineupManager!.GetCurLineup()!));
+                return;
+            }
+
             await InitStoryLine(storyLineId);
             return;
         }
@@ -282,6 +299,10 @@ public class StoryLineManager(PlayerInstance player) : BasePlayerManager(player)
                 Player.Data.Rot = rot;
             }
         }
+
+        // A raid entered before raids kept their line (40412 left 1040207) gets its line back.
+        if (StoryLineData.CurStoryLineId == 0 && Player.RaidManager?.RaidData.CurRaidId > 0)
+            await ResumeSuspendedLine();
 
         // A line entered with the wrong team (before TrialLineup) gets its own team back.
         if (StoryLineData.CurStoryLineId != 0 &&
