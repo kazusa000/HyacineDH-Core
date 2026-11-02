@@ -174,7 +174,9 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
         });
 
         if (sendPacket) await Player.SendPacket(new PacketPlayerSyncScNotify(sync));
-        if (Player.SceneInstance != null) await Player.SceneInstance.SyncGroupInfo();
+        // Deferred with the start (FinishSubMission): groups the new step loads must reach the client after the sync
+        // that tells it the step is running, or it drops them (raid 41442's 104050429: G24's guide NPC never showed).
+        if (Player.SceneInstance != null && !deferStart) await Player.SceneInstance.SyncGroupInfo();
         if (mission.SubMissionInfo != null)
             try
             {
@@ -314,6 +316,7 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
         await Player.SendPacket(new PacketPlayerSyncScNotify(sync));
         await Player.SendPacket(new PacketStartFinishSubMissionScNotify(missionId));
         await Player.SendPacket(new PacketFinishedMissionScNotify([missionId]));
+        if (accepted.Count > 0 && Player.SceneInstance != null) await Player.SceneInstance.SyncGroupInfo();
         foreach (var id in accepted) await StartSubMission(id);
 
         if (mainMission.MissionInfo != null)
