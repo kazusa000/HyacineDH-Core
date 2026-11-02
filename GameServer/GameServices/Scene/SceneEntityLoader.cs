@@ -223,12 +223,22 @@ public class SceneEntityLoader(SceneInstance scene)
     // either starts battle 20331052 or ends in 103270415, while the competing 103270406 waits on 20331053. Group IDs
     // are per floor: 404031108 lists its own G109 on F10304001, which must not load 1032902's final battle G109 at
     // F20332001 (its district trigger then starts 20332050 again after every fight of 103290219's opening).
+    // A battle group its own main mission's steps list is theirs alone: once those are done it stays unloaded even
+    // when its graph's battle matches another running step. 1040112's G199 reads 20412072 like G200 in the data,
+    // while the client starts 20412071 (its step 104011203); with 104011204 waiting on 20412072, G199 stayed loaded
+    // and the client started 20412071 again after every win.
     private bool BattleGroupInactive(GroupInfo group)
     {
         if (!ConfigManager.Config.ServerOption.EnableMission || group.RelatedBattleId.Count == 0) return false;
-        return !Scene.Player.MissionManager!.GetRunningSubMissionList().Any(x =>
-            (x.FinishType == MissionFinishTypeEnum.StageWin && group.RelatedBattleId.Contains(x.ParamInt1)) ||
-            (x.LevelFloorID == Scene.FloorId && x.GroupIDList?.Contains(group.Id) == true));
+        var running = Scene.Player.MissionManager!.GetRunningSubMissionList();
+        if (running.Any(x => x.LevelFloorID == Scene.FloorId && x.GroupIDList?.Contains(group.Id) == true))
+            return false;
+        GameData.MainMissionData.TryGetValue(group.OwnerMainMissionID, out var main);
+        if (main?.MissionInfo?.SubMissionList.Any(x =>
+                x.LevelFloorID == Scene.FloorId && x.GroupIDList?.Contains(group.Id) == true) == true)
+            return true;
+        return !running.Any(x =>
+            x.FinishType == MissionFinishTypeEnum.StageWin && group.RelatedBattleId.Contains(x.ParamInt1));
     }
 
     public virtual async ValueTask<List<BaseGameEntity>?> LoadGroup(int groupId, bool sendPacket = true)
