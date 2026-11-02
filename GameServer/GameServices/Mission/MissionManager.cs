@@ -318,6 +318,7 @@ public class MissionManager(PlayerInstance player) : BasePlayerManager(player)
         await Player.SendPacket(new PacketFinishedMissionScNotify([missionId]));
         if (accepted.Count > 0 && Player.SceneInstance != null) await Player.SceneInstance.SyncGroupInfo();
         foreach (var id in accepted) await StartSubMission(id);
+        await PuzzleFallback.ReloadForDroppedGroups(Player, accepted);
 
         if (mainMission.MissionInfo != null)
             await HandleFinishAction(mainMission.MissionInfo, missionId);

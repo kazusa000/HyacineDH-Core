@@ -431,6 +431,33 @@ public static class PuzzleFallback
 
     private const int RaidEntranceGoto = 6900;
 
+    // A server group whose NPC leads the player into a district that starts a battle (raid 41442's G24 for
+    // 104050429, G42 for 104050433), loaded in the middle of the scene: the 4.1 client takes the group refresh but
+    // never builds the NPC, so the district and battle never come. It builds them from the scene info, as after a
+    // re-login, so the scene is sent again where the player stands.
+    public static async ValueTask ReloadForDroppedGroups(PlayerInstance player, IEnumerable<int> accepted)
+    {
+        if (!ConfigManager.Config.ServerOption.PuzzleFallback) return;
+        var scene = player.SceneInstance;
+        if (scene?.FloorInfo == null) return;
+        var groups = accepted
+            .Select(id => GameData.SubMissionInfoData.GetValueOrDefault(id)?.SubMissionInfo)
+            .Where(info => info?.LevelFloorID == scene.FloorId)
+            .SelectMany(info => info!.GroupIDList ?? [])
+            .Where(id => scene.FloorInfo.Groups.GetValueOrDefault(id) is
+            {
+                LoadSide: GroupLoadSideEnum.Server, NPCList.Count: > 0, LevelGraph.Length: > 0
+            } group && ReadGraph(group.LevelGraph) is var text &&
+                         text.Contains("RPG.GameCore.AdvDistrictSetupTrigger\"") &&
+                         text.Contains("RPG.GameCore.TriggerBattle\""))
+            .ToList();
+        if (groups.Count == 0) return;
+        Log.Warn($"groups {string.Join(",", groups)} on floor {scene.FloorId} lead into a battle district and the client " +
+                 "does not build them from a refresh; sending the scene again");
+        await player.LoadScene(player.Data.PlaneId, player.Data.FloorId, player.Data.EntryId, player.Data.Pos!,
+            player.Data.Rot!, true);
+    }
+
     internal static string ReadGraph(string path)
     {
         return GraphText.GetOrAdd(path, p =>
