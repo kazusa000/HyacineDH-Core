@@ -22,6 +22,12 @@ public class PropInfo : PositionInfo
 
     public ValueSourceInfo? ValueSource { get; set; }
     public string? InitLevelGraph { get; set; }
+    public PropTagOverrideInfo? TagOverrideComponents { get; set; }
+
+    // A prop the player turns back in time with the field rewind (「欧洛尼斯祷言」, 104041026's floating stone).
+    [JsonIgnore]
+    public bool IsTimeRewindable =>
+        TagOverrideComponents?.TagComponents.Any(x => !string.IsNullOrEmpty(x.TimeRewindAnimEventJson)) == true;
 
     [JsonConverter(typeof(StringEnumConverter))]
     public PropStateEnum State { get; set; } = PropStateEnum.Closed;
@@ -91,4 +97,15 @@ public class PropInfo : PositionInfo
 public class ValueSourceInfo
 {
     public List<JObject> Values { get; set; } = [];
+}
+
+public class PropTagOverrideInfo
+{
+    public List<PropTagComponentInfo> TagComponents { get; set; } = [];
+}
+
+public class PropTagComponentInfo
+{
+    // Only PropTagTimeRewindEntityComponent has it; the "$type" names are read as JSON metadata and dropped.
+    public string? TimeRewindAnimEventJson { get; set; }
 }

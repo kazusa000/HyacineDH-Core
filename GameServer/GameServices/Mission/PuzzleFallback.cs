@@ -104,6 +104,21 @@ public static class PuzzleFallback
                 values[info.ParamStr1] = info.ParamInt1;
                 break;
             case MissionFinishTypeEnum.GroupPropertyValue:
+                // A step waiting on a prop turned back in time (104041026: rewind G31's floating stone, which unlocks
+                // the lift, Lock=0): the 4.1 client never builds the rewind button for it (MazeMiniGameBtn stays
+                // empty, like 104010572's), so the step is taken as done and the property set as the rewind would.
+                if (floor?.Groups.GetValueOrDefault(info.WayPointGroupID)?.PropList
+                        .FirstOrDefault(x => x.ID == info.WayPointEntityID) is { IsTimeRewindable: true })
+                {
+                    Log.Warn($"sub-mission {info.ID}: waypoint prop {info.WayPointGroupID}/{info.WayPointEntityID} is " +
+                             $"turned back in time, which the client offers no button for; setting group property " +
+                             $"{info.ParamInt1}/{info.ParamStr1}={info.ParamInt2} on floor {info.LevelFloorID}");
+                    await SetGroupProperty(player, info.LevelFloorID, info.ParamInt1, info.ParamStr1, info.ParamInt2);
+                    if (player.MissionManager.GetSubMissionStatus(info.ID) == MissionPhaseEnum.Accept)
+                        await player.MissionManager.FinishSubMission(info.ID);
+                    return;
+                }
+
                 if (Interactable(floor, info.ParamInt1) || ClientSetsGroupProperty(floor, info.ParamInt1, info.ParamStr1))
                     return;
                 Log.Warn($"sub-mission {info.ID}: nothing can set group property {info.ParamInt1}/{info.ParamStr1}=" +
@@ -119,6 +134,22 @@ public static class PuzzleFallback
         }
 
         await player.MissionManager.FinishSubMission(info.ID);
+    }
+
+    // Through the scene when the player is on that floor (the client sees the change), else into the save.
+    private static async ValueTask SetGroupProperty(PlayerInstance player, int floorId, int groupId, string name,
+        int value)
+    {
+        if (player.SceneInstance is { } scene && scene.FloorId == floorId)
+        {
+            await scene.UpdateGroupProperty(groupId, name, value);
+            return;
+        }
+
+        if (!player.SceneData!.GroupPropertyData.TryGetValue(floorId, out var groups))
+            player.SceneData.GroupPropertyData[floorId] = groups = [];
+        if (!groups.TryGetValue(groupId, out var values)) groups[groupId] = values = [];
+        values[name] = value;
     }
 
     private static bool Interactable(FloorInfo? floor, int groupId)
