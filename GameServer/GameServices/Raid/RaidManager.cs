@@ -107,7 +107,19 @@ public class RaidManager : BasePlayerManager
 
             if (avatarList?.Count > 0)
             {
+                // The client asks for a story line's trial avatar by its base id (40414: 1404 for 1021404). Unowned,
+                // that left the lineup empty, and the scene being left, its player gone, failed every frame
+                // (EntityTimeRewindComponent) before the raid loaded. Take the trial avatar already in the team.
+                var current = Player.LineupManager!.GetCurLineup()!.BaseAvatars ?? [];
+                avatarList = avatarList.Select(id =>
+                    current.FirstOrDefault(x => x.SpecialAvatarId > 0 &&
+                                                (x.BaseAvatarId == id || x.SpecialAvatarId % 10000 == id)) is { } trial
+                        ? trial.SpecialAvatarId
+                        : id).ToList();
+                var before = current.Select(x => x.SpecialAvatarId > 0 ? x.SpecialAvatarId : x.BaseAvatarId).ToList();
                 Player.LineupManager!.SetExtraLineup(ExtraLineupType.LineupHeliobus, avatarList);
+                if (Player.LineupManager!.GetCurLineup()!.BaseAvatars is not { Count: > 0 } && before.Count > 0)
+                    Player.LineupManager!.SetExtraLineup(ExtraLineupType.LineupHeliobus, before);
                 await Player.SendPacket(new PacketSyncLineupNotify(Player.LineupManager!.GetCurLineup()!));
             }
             else if (excel.TeamType == RaidTeamTypeEnum.TrialOnly)
