@@ -119,6 +119,20 @@ public static class PuzzleFallback
                     return;
                 }
 
+                // The mascot capture QTE (raid 41442's 104050421, G28 SGP_CatchFinish): timed holds on a rewind control
+                // the 4.1 client leaves empty, with the camera locked on the arena; its group is already loaded, so no
+                // interaction reaches OnGroupInteract either. The property is set as a catch would.
+                if (floor?.Groups.GetValueOrDefault(info.ParamInt1) is { LevelGraph.Length: > 0 } qteGroup &&
+                    ReadGraph(qteGroup.LevelGraph).Contains("RPG.GameCore.QteCatchGhostRewind\""))
+                {
+                    Log.Warn($"sub-mission {info.ID}: group {info.ParamInt1} is a capture QTE the client cannot play; " +
+                             $"setting group property {info.ParamStr1}={info.ParamInt2} on floor {info.LevelFloorID}");
+                    await SetGroupProperty(player, info.LevelFloorID, info.ParamInt1, info.ParamStr1, info.ParamInt2);
+                    if (player.MissionManager.GetSubMissionStatus(info.ID) == MissionPhaseEnum.Accept)
+                        await player.MissionManager.FinishSubMission(info.ID);
+                    return;
+                }
+
                 if (Interactable(floor, info.ParamInt1) || ClientSetsGroupProperty(floor, info.ParamInt1, info.ParamStr1))
                     return;
                 Log.Warn($"sub-mission {info.ID}: nothing can set group property {info.ParamInt1}/{info.ParamStr1}=" +
