@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Text.RegularExpressions;
 using HyacineCore.Server.Data;
 using HyacineCore.Server.Data.Config;
 using HyacineCore.Server.Data.Config.Scene;
@@ -80,6 +81,12 @@ public static class PuzzleFallback
         switch (info.FinishType)
         {
             case MissionFinishTypeEnum.FloorSavedValue:
+                if (Skipped(player, info))
+                {
+                    await TakeSkippedValue(player, info);
+                    return;
+                }
+
                 if (info.ParamStr1.StartsWith("FSV_ML") || info.ParamStr1.StartsWith("JG_ML")) return;
                 if (MissionSetValues.Value.Contains((info.LevelFloorID.ToString(), info.ParamStr1, info.ParamInt1))) return;
                 if (PuzzleGroups(floor, info).Any(id => Interactable(floor, id))) return;
@@ -232,6 +239,52 @@ public static class PuzzleFallback
             .Select(g => g.Id).ToHashSet();
         if (groups.Count == 0) groups = (info.GroupIDList ?? []).ToHashSet();
         return groups;
+    }
+
+    // A story choice can skip a puzzle (1040109's 104010974 sets FSV_SkipPuzzle_Infusion), and a group graph then sets
+    // the puzzle's values in its place (G302: when FSV_SkipPuzzle_Infusion is 1, the soul-forging statues'
+    // FSV_SStatue*). The data strips those tasks, so a step waiting on a value that a graph names next to a skip value
+    // that is 1 takes the value, when the skip value is set or when the step is accepted after it.
+    public static async ValueTask OnPuzzleSkipped(PlayerInstance player, int floorId)
+    {
+        if (!ConfigManager.Config.ServerOption.PuzzleFallback) return;
+        foreach (var info in player.MissionManager!.GetRunningSubMissionList()
+                     .Where(x => x.LevelFloorID == floorId && x.FinishType == MissionFinishTypeEnum.FloorSavedValue)
+                     .ToList())
+            if (Skipped(player, info))
+                await TakeSkippedValue(player, info);
+    }
+
+    private static readonly Regex SkipValue = new("\"(FSV_SkipPuzzle_[A-Za-z0-9_]+)\"");
+
+    internal static bool Skipped(PlayerInstance player, SubMissionInfo info)
+    {
+        if (player.SceneData!.FloorSavedData.GetValueOrDefault(info.LevelFloorID) is not { } values) return false;
+        var name = $"\"{info.ParamStr1}\"";
+        foreach (var group in GameData.GetFloorInfo(info.LevelFloorID)?.Groups.Values ?? [])
+        {
+            if (string.IsNullOrEmpty(group.LevelGraph)) continue;
+            var text = ReadGraph(group.LevelGraph);
+            if (!text.Contains(name)) continue;
+            if (SkipValue.Matches(text).Any(m => m.Groups[1].Value != info.ParamStr1 &&
+                                                 values.GetValueOrDefault(m.Groups[1].Value) == 1))
+                return true;
+        }
+
+        return false;
+    }
+
+    internal static async ValueTask TakeSkippedValue(PlayerInstance player, SubMissionInfo info)
+    {
+        if (player.MissionManager!.GetSubMissionStatus(info.ID) != MissionPhaseEnum.Accept) return;
+        Log.Warn($"sub-mission {info.ID}: puzzle skipped, setting {info.ParamStr1}={info.ParamInt1} " +
+                 $"on floor {info.LevelFloorID}");
+        if (player.SceneInstance is { } scene && scene.FloorId == info.LevelFloorID)
+            await scene.UpdateFloorSavedValue(info.ParamStr1, info.ParamInt1);
+        else
+            player.SceneData!.FloorSavedData[info.LevelFloorID][info.ParamStr1] = info.ParamInt1;
+        if (player.MissionManager.GetSubMissionStatus(info.ID) == MissionPhaseEnum.Accept)
+            await player.MissionManager.FinishSubMission(info.ID);
     }
 
     internal static string ReadGraph(string path)

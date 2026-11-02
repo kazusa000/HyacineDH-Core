@@ -39,6 +39,10 @@ public class MissionHandlerSetFloorSavedValue : MissionFinishActionHandler
                          g.PropList.Any(p => p.Name.Contains("JigsawSir"))) ?? [])
                 await player.CheckJigsawPieces(group.Id, scene);
 
+        // Steps of a puzzle this value skips (1040109's FSV_SkipPuzzle_Infusion) take their values now.
+        if (paramString[2].StartsWith("FSV_SkipPuzzle_") && int.Parse(paramString[3]) == 1)
+            await PuzzleFallback.OnPuzzleSkipped(player, floor);
+
         // Doors a mission step opens by this value (1030701's G37) open now.
         if (paramString[2].StartsWith("MissionFV_") && player.SceneInstance is { } current &&
             current.FloorId == floor)
