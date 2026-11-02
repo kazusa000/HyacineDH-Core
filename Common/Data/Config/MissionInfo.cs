@@ -43,6 +43,8 @@ public class SubMissionInfo
     public int Progress { get; set; }
     public List<int>? GroupIDList { get; set; } = [];
     public int SubRewardID { get; set; }
+    public int WayPointGroupID { get; set; }
+    public int WayPointEntityID { get; set; }
 }
 
 public class CustomValueInfo
