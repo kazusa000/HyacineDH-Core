@@ -23,6 +23,7 @@ public class PropInfo : PositionInfo
     public ValueSourceInfo? ValueSource { get; set; }
     public string? InitLevelGraph { get; set; }
     public PropTagOverrideInfo? TagOverrideComponents { get; set; }
+    public PropDialogInfo? Dialog { get; set; }
 
     // A prop the player turns back in time with the field rewind (「欧洛尼斯祷言」, 104041026's floating stone).
     [JsonIgnore]
@@ -97,6 +98,11 @@ public class PropInfo : PositionInfo
 public class ValueSourceInfo
 {
     public List<JObject> Values { get; set; } = [];
+}
+
+public class PropDialogInfo
+{
+    public string LevelGraph { get; set; } = "";
 }
 
 public class PropTagOverrideInfo

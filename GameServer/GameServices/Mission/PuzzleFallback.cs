@@ -129,6 +129,19 @@ public static class PuzzleFallback
                 Log.Warn($"sub-mission {info.ID}: group {info.ParamInt1} has nothing to interact with for timeline " +
                          $"{info.ParamStr1} on floor {info.LevelFloorID}, skipping it");
                 break;
+            case MissionFinishTypeEnum.Talk:
+                // A talk on a prop nothing creates (104050303 「见证卡厄斯兰那的全部回忆」: G89's head, LoadOnInitial
+                // false, its dialogue its own; G89 is a client group whose graph, empty in the data, never spawns
+                // it, and the client ignores a server-sent entity for it). Its video, Act104050303, already played
+                // when G87's district was first entered (104050301).
+                if (floor?.Groups.GetValueOrDefault(info.WayPointGroupID) is not
+                        { LoadSide: GroupLoadSideEnum.Client, LevelGraph.Length: > 0 } talkGroup ||
+                    talkGroup.PropList.FirstOrDefault(x => x.ID == info.WayPointEntityID) is not
+                        { LoadOnInitial: false, Dialog.LevelGraph.Length: > 0 } ||
+                    ReadGraph(talkGroup.LevelGraph).Contains("$type")) return;
+                Log.Warn($"sub-mission {info.ID}: waypoint prop {info.WayPointGroupID}/{info.WayPointEntityID} is " +
+                         $"never created (its group graph is empty), skipping the talk");
+                break;
             default:
                 return;
         }
