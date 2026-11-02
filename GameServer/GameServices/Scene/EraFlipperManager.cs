@@ -1,3 +1,5 @@
+using System.Text.RegularExpressions;
+using HyacineCore.Server.Data.Config;
 using HyacineCore.Server.Enums.Mission;
 using HyacineCore.Server.GameServer.Game.Mission;
 using HyacineCore.Server.GameServer.Game.Player;
@@ -5,6 +7,7 @@ using HyacineCore.Server.GameServer.Server.Packet;
 using HyacineCore.Server.Kcp;
 using HyacineCore.Server.Proto;
 using HyacineCore.Server.Util;
+using Newtonsoft.Json.Linq;
 
 namespace HyacineCore.Server.GameServer.Game.Scene;
 
@@ -61,5 +64,67 @@ public class EraFlipperManager(PlayerInstance player)
             Log.Info($"Sub-mission {info.ID}: era flip on floor {scene.FloorId} sets {info.ParamStr1}={info.ParamInt1}");
             await scene.UpdateFloorSavedValue(info.ParamStr1, info.ParamInt1);
         }
+    }
+
+    // An era device's graph reports a finished flip as a group property (1040213's G39 Era_Device_Scaleroom:
+    // Clt_EraFlipFinished sends EraFlipFinished_<n>=1, the second one only once FSV_CrossBlock is 1), and the stripped
+    // server task turns it into the room's FSV_Era_Switched_ScaleRoom[_<n>]: G73 finishes 104021314 on the first, 104021356
+    // waits for _2 and G158 finishes 104021361 on _3. A running step that waits for the n-th such value, itself or
+    // through its group's graph, takes it.
+    public async ValueTask OnGroupProperty(string name, int value)
+    {
+        var flip = Regex.Match(name, @"^EraFlipFinished_(\d+)$");
+        if (!flip.Success || value == 0 || player.SceneInstance is not { } scene || player.SceneData == null) return;
+        var n = int.Parse(flip.Groups[1].Value);
+        var saved = player.SceneData.GetFloorSavedValues(scene.FloorId);
+        foreach (var info in player.MissionManager!.GetRunningSubMissionList())
+        {
+            if (info.LevelFloorID != scene.FloorId) continue;
+            foreach (var (key, target) in Waits(scene, info))
+            {
+                if (!key.StartsWith("FSV_Era_Switched") || saved.GetValueOrDefault(key) == target) continue;
+                var index = Regex.Match(key, @"_(\d+)$");
+                if ((index.Success ? int.Parse(index.Groups[1].Value) : 1) != n) continue;
+                Log.Info($"Sub-mission {info.ID}: {name} on floor {scene.FloorId} sets {key}={target}");
+                await scene.UpdateFloorSavedValue(key, target);
+            }
+        }
+    }
+
+    // The floor saved values a step waits for: its own FloorSavedValue condition, or a group graph branch that finishes
+    // it (ClientFinishMission) once ByCompareFloorSavedValue holds.
+    private static List<(string Key, int Value)> Waits(SceneInstance scene, SubMissionInfo info)
+    {
+        List<(string, int)> waits = [];
+        if (info.FinishType == MissionFinishTypeEnum.FloorSavedValue && !string.IsNullOrEmpty(info.ParamStr1))
+            waits.Add((info.ParamStr1, info.ParamInt1));
+        if (info.FinishType != MissionFinishTypeEnum.Talk) return waits;
+        foreach (var id in info.GroupIDList ?? [])
+        {
+            var graph = scene.FloorInfo?.Groups.GetValueOrDefault(id)?.LevelGraph;
+            if (string.IsNullOrEmpty(graph)) continue;
+            var text = PuzzleFallback.ReadGraph(graph);
+            if (!text.Contains("RPG.GameCore.ClientFinishMission")) continue;
+            try
+            {
+                foreach (var branch in JToken.Parse(text).SelectTokens("$..*").OfType<JObject>())
+                {
+                    var compare = branch["Predicate"] ?? branch["Condition"];
+                    var tasks = branch["SuccessTaskList"] ?? branch["OnChange"];
+                    if ((string?)compare?["$type"] != "RPG.GameCore.ByCompareFloorSavedValue" || tasks is not JArray list ||
+                        compare["CompareValue"] == null || !list.Any(t =>
+                            (string?)t["$type"] == "RPG.GameCore.ClientFinishMission" && (int?)t["SubmissionID"] == info.ID))
+                        continue;
+                    var key = (string?)compare["DynamicName"]?["Value"] ?? (string?)compare["Name"];
+                    if (!string.IsNullOrEmpty(key)) waits.Add((key, (int)compare["CompareValue"]!));
+                }
+            }
+            catch
+            {
+                // a graph that does not parse waits for nothing
+            }
+        }
+
+        return waits;
     }
 }
