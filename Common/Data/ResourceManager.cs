@@ -242,9 +242,13 @@ public class ResourceManager
                                 I18NManager.Translate("Word.Error")), ex);
                     }
 
-                // Load group infos sequentially to maintain order
-                foreach (var groupInfo in info.GroupInstanceList)
+                // Load group infos sequentially to maintain order. A group a dimension rebuilds is listed once per
+                // variant (F20412001's G102 and G102_D1, whose puzzle-state default differs): the floor's default
+                // dimension decides its config, and each variant stays reachable by its index for story lines.
+                var defaultIndexes = info.DimensionList.Find(d => d.ID == 0)?.GroupIndexList.ToHashSet() ?? [];
+                for (var index = 0; index < info.GroupInstanceList.Count; index++)
                 {
+                    var groupInfo = info.GroupInstanceList[index];
                     if (groupInfo.IsDelete) continue;
                     if (groupInfo.GroupPath.Contains("_D100")) continue;
                     FileInfo groupFile = new(ConfigManager.Config.Path.ResourcePath + "/" + groupInfo.GroupPath);
@@ -259,8 +263,10 @@ public class ResourceManager
                         if (group != null)
                         {
                             group.Id = groupInfo.ID;
-                            // Use a sorted collection or maintain order manually
-                            info.Groups[groupInfo.ID] = group;
+                            if (defaultIndexes.Count == 0 || defaultIndexes.Contains(index) ||
+                                !info.Groups.ContainsKey(groupInfo.ID))
+                                info.Groups[groupInfo.ID] = group;
+                            info.GroupsByIndex[index] = group;
 
                             // Load graph
                             var graphPath = ConfigManager.Config.Path.ResourcePath + "/" + group.LevelGraph;

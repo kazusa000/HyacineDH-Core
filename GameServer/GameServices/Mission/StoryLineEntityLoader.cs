@@ -30,7 +30,14 @@ public class StoryLineEntityLoader(SceneInstance scene) : SceneEntityLoader(scen
 
         LoadGroups.AddRange(dim.GroupIDList);
 
-        foreach (var group in Scene.FloorInfo?.Groups.Values!) // Sanity check in SceneInstance
+        // The dimension's own variants of a group (G102_D1 for dimension 1) over the default dimension's.
+        var groups = Scene.FloorInfo!.Groups.Values.ToDictionary(g => g.Id);
+        if (dim.ID != 0)
+            foreach (var index in dim.GroupIndexList)
+                if (Scene.FloorInfo.GroupsByIndex.TryGetValue(index, out var variant))
+                    groups[variant.Id] = variant;
+
+        foreach (var group in groups.Values) // Sanity check in SceneInstance
         {
             if (group.LoadSide == GroupLoadSideEnum.Client) continue;
             if (group.GroupName.Contains("TrainVisitor")) continue;

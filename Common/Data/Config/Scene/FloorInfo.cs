@@ -14,6 +14,10 @@ public class FloorInfo
     [JsonConverter(typeof(ConcurrentDictionaryConverter<int, GroupInfo>))]
     public ConcurrentDictionary<int, GroupInfo> Groups = [];
 
+    // Every loaded group variant by its GroupInstanceList index, for the dimensions that list their own.
+    [JsonConverter(typeof(ConcurrentDictionaryConverter<int, GroupInfo>))]
+    public ConcurrentDictionary<int, GroupInfo> GroupsByIndex = [];
+
     [JsonIgnore] public bool Loaded;
 
     [JsonConverter(typeof(ConcurrentBagConverter<int>))]
