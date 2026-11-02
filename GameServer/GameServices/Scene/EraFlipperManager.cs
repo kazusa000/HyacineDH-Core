@@ -125,6 +125,6 @@ public class EraFlipperManager(PlayerInstance player)
             }
         }
 
-        return waits;
+        return waits.Distinct().ToList(); // a graph can wait for the value in more than one branch
     }
 }
