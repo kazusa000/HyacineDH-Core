@@ -1,3 +1,4 @@
+using HyacineCore.Server.GameServer.Game.Mission;
 using HyacineCore.Server.GameServer.Server.Packet.Send.Scene;
 using HyacineCore.Server.Kcp;
 using HyacineCore.Server.Proto;
@@ -28,5 +29,7 @@ public class HandlerUpdateGroupPropertyCsReq : Handler
         // update group property
         var res = await scene.UpdateGroupProperty((int)req.GroupId, req.NOCBONMOOGC, req.BFJLBKKJBLD);
         await connection.SendPacket(new PacketUpdateGroupPropertyScRsp(res, req));
+        await PuzzleFallback.OnClientGroupProperty(connection.Player, (int)req.GroupId, req.NOCBONMOOGC,
+            (int)req.BFJLBKKJBLD);
     }
 }

@@ -287,6 +287,51 @@ public static class PuzzleFallback
             await player.MissionManager.FinishSubMission(info.ID);
     }
 
+    // A client graph that sets a server group property may, in the same task list, set a floor custom float
+    // FCV_<X> whose server twin FSV_<X> a stripped server graph sets (e.g. FCV_SpiralStairs after the third
+    // 雅努斯迷津 board, which 104021309 waits for as FSV_SpiralStairs). The declared saved value follows the float.
+    public static async ValueTask OnClientGroupProperty(PlayerInstance player, int groupId, string name, int value)
+    {
+        if (!ConfigManager.Config.ServerOption.PuzzleFallback) return;
+        var scene = player.SceneInstance;
+        var graph = scene?.FloorInfo?.Groups.GetValueOrDefault(groupId)?.LevelGraph;
+        if (scene == null || string.IsNullOrEmpty(graph)) return;
+        var text = ReadGraph(graph);
+        if (!text.Contains("SetFloorCustomFloat") || !text.Contains("RequestSetServerGroupProperty")) return;
+
+        List<(string Name, int Value)> mirrors = [];
+        try
+        {
+            foreach (var list in JToken.Parse(text).SelectTokens("$..*").OfType<JArray>())
+            {
+                var tasks = list.OfType<JObject>().ToList();
+                if (!tasks.Any(t => (string?)t["$type"] == "RPG.GameCore.RequestSetServerGroupProperty" &&
+                                    (int?)t["GroupID"] == groupId && (string?)t["DynamicName"]?["Value"] == name &&
+                                    ((int?)t["Value"] ?? 0) == value)) continue;
+                foreach (var task in tasks.Where(t => (string?)t["$type"] == "RPG.GameCore.SetFloorCustomFloat"))
+                {
+                    var custom = (string?)task["Name"]?["Value"];
+                    var set = (double?)task["Value"]?["FixedValue"]?["Value"] ?? 0;
+                    if (custom?.StartsWith("FCV_") == true) mirrors.Add(("FSV_" + custom[4..], (int)set));
+                }
+            }
+        }
+        catch
+        {
+            // a graph that does not parse mirrors nothing
+            return;
+        }
+
+        foreach (var (saved, set) in mirrors.Distinct())
+        {
+            if (scene.FloorInfo!.FloorSavedValue.All(x => x.Name != saved)) continue;
+            if (player.SceneData!.FloorSavedData.GetValueOrDefault(scene.FloorId)?.TryGetValue(saved, out var cur) == true &&
+                cur == set) continue;
+            Log.Warn($"group {groupId} set {name}={value} with its floor float, setting {saved}={set} on floor {scene.FloorId}");
+            await scene.UpdateFloorSavedValue(saved, set);
+        }
+    }
+
     internal static string ReadGraph(string path)
     {
         return GraphText.GetOrAdd(path, p =>
