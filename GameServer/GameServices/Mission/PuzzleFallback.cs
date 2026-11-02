@@ -141,7 +141,18 @@ public static class PuzzleFallback
                     ReadGraph(talkGroup.LevelGraph).Contains("$type")) return;
                 Log.Warn($"sub-mission {info.ID}: waypoint prop {info.WayPointGroupID}/{info.WayPointEntityID} is " +
                          $"never created (its group graph is empty), skipping the talk");
-                break;
+                await player.MissionManager.FinishSubMission(info.ID);
+                // The talk also leads into the raid its goto names (GotoID 6900, a raid entrance: 41442 for
+                // 104050303, whose finish 104050306 waits on), which the client would ask for.
+                if (info.GotoID == RaidEntranceGoto && info.GotoParam.FirstOrDefault() is > 0 and var raidId &&
+                    player.RaidManager!.RaidData.CurRaidId == 0 &&
+                    await player.RaidManager.EnterRaid(raidId, 0) is { } record)
+                {
+                    Log.Warn($"sub-mission {info.ID}: entering raid {raidId} the talk leads to");
+                    await player.EnterScene(record.EntryId, 0, true);
+                }
+
+                return;
             default:
                 return;
         }
@@ -403,6 +414,8 @@ public static class PuzzleFallback
             await scene.UpdateFloorSavedValue(saved, set);
         }
     }
+
+    private const int RaidEntranceGoto = 6900;
 
     internal static string ReadGraph(string path)
     {

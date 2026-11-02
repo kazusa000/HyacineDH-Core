@@ -45,6 +45,8 @@ public class SubMissionInfo
     public int SubRewardID { get; set; }
     public int WayPointGroupID { get; set; }
     public int WayPointEntityID { get; set; }
+    public int GotoID { get; set; }
+    public List<int> GotoParam { get; set; } = [];
 }
 
 public class CustomValueInfo
