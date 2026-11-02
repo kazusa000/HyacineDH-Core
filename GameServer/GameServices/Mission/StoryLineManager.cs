@@ -38,6 +38,8 @@ public class StoryLineManager(PlayerInstance player) : BasePlayerManager(player)
 
         // A line another line switched away from is suspended. When no line is active and the suspended
         // line's show range is still open, the player is back in it.
+        // A raid replaces the story line while it runs, so none resumes until the raid is left.
+        if (Player.RaidManager?.RaidData.CurRaidId > 0) return;
         foreach (var storyLineId in StoryLineData.RunningStoryLines.Keys.ToList())
         {
             if (GameData.StoryLineData.GetValueOrDefault(storyLineId)?.ShowRange() is not { } range) continue;

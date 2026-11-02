@@ -64,6 +64,17 @@ public class RaidManager : BasePlayerManager
     public async ValueTask<RaidRecord?> EnterRaid(int raidId, int worldLevel, List<int>? avatarList = null,
         bool enterSaved = false)
     {
+        // Asking again for the raid the player is already in, from outside any raid plane, starts it over:
+        // the player was moved out of it (a story line resumed) while it stayed current, and its saved
+        // position may already be outside it.
+        if (RaidData.CurRaidId == raidId && RaidData.CurRaidWorldLevel == worldLevel &&
+            GameData.MazePlaneData.GetValueOrDefault(Player.Data.PlaneId)?.PlaneType != PlaneTypeEnum.Raid)
+        {
+            RaidData.CurRaidId = 0;
+            RaidData.CurRaidWorldLevel = 0;
+            enterSaved = false;
+        }
+
         if (RaidData.CurRaidId != 0) return null;
 
         GameData.RaidConfigData.TryGetValue(raidId * 100 + worldLevel, out var excel);
