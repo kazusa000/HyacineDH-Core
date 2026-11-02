@@ -33,5 +33,7 @@ public class HandlerUpdateGroupPropertyCsReq : Handler
         await PuzzleFallback.OnClientGroupProperty(connection.Player, (int)req.GroupId, req.NOCBONMOOGC,
             (int)req.BFJLBKKJBLD);
         await new EraFlipperManager(connection.Player).OnGroupProperty(req.NOCBONMOOGC, (int)req.BFJLBKKJBLD);
+        await CorePlateArrival.OnGroupProperty(connection.Player, (int)req.GroupId, req.NOCBONMOOGC,
+            (int)req.BFJLBKKJBLD);
     }
 }

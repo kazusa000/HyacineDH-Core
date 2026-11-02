@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using HyacineCore.Server.Data;
 using HyacineCore.Server.Data.Config;
 using HyacineCore.Server.Data.Config.Scene;
+using HyacineCore.Server.Data.Custom;
 using HyacineCore.Server.Enums.Mission;
 using HyacineCore.Server.Enums.Scene;
 using HyacineCore.Server.GameServer.Game.Player;
@@ -89,6 +90,7 @@ public static class PuzzleFallback
 
                 if (info.ParamStr1.StartsWith("FSV_ML") || info.ParamStr1.StartsWith("JG_ML")) return;
                 if (MissionSetValues.Value.Contains((info.LevelFloorID.ToString(), info.ParamStr1, info.ParamInt1))) return;
+                if (RainbowSetValues.Value.Contains((info.LevelFloorID, info.ParamStr1, info.ParamInt1))) return;
                 if (PuzzleGroups(floor, info).Any(id => Interactable(floor, id))) return;
 
                 Log.Warn($"sub-mission {info.ID}: nothing can set {info.ParamStr1}={info.ParamInt1} " +
@@ -150,6 +152,32 @@ public static class PuzzleFallback
                         x.FinishActionParaString.Count >= 4 && int.TryParse(x.FinishActionParaString[3], out _))
             .Select(x => (x.FinishActionParaString[1], x.FinishActionParaString[2], int.Parse(x.FinishActionParaString[3])))
             .ToHashSet());
+
+    // The rainbow compass floors' group property rules (SceneRainbowGroupProperty) set floor saved values once their
+    // puzzles are solved: 1040406's G6/G77/G78 compasses set FSV_CompassFinished 1-3 and FSV_Rainbow, and 104040651's
+    // lift battle waits for FSV_Rainbow. Skipping those compass steps would leave FSV_Rainbow unset for good.
+    private static readonly Lazy<HashSet<(int, string, int)>> RainbowSetValues = new(() =>
+    {
+        HashSet<(int, string, int)> values = [];
+
+        void Add(int floorId, IEnumerable<RainbowActionInfo> actions)
+        {
+            foreach (var action in actions)
+            {
+                if (action.ActionType == SceneActionTypeEnum.SetFloorSavedValue &&
+                    action.Params.GetValueOrDefault("SavedValueName") is string name &&
+                    action.Params.GetValueOrDefault("SavedValue") is long value)
+                    values.Add((floorId, name, (int)value));
+                if (action.Params.GetValueOrDefault("SuccActions") is JToken succ)
+                    Add(floorId, succ.ToObject<List<RainbowActionInfo>>() ?? []);
+            }
+        }
+
+        foreach (var (floorId, groups) in GameData.SceneRainbowGroupPropertyData.FloorProperty)
+        foreach (var property in groups.Values.SelectMany(g => g.Values).SelectMany(p => p.Values))
+            Add(floorId, property.PrivateActions.Concat(property.Actions));
+        return values;
+    });
 
     private static readonly ConcurrentDictionary<string, HashSet<(string, int)>> FloorValueBranches = new();
 
