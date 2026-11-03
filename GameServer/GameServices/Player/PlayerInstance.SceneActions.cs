@@ -219,6 +219,14 @@ public partial class PlayerInstance
 
         if (prop.PropInfo.IsLevelBtn) await prop.SetState(PropStateEnum.Closed);
 
+        // The tomb's Switch Hand socket locks after the placed core sends interaction 1120. Its client
+        // graph plays the rune download at that point, but the mission waits for the server's Rune2 value.
+        if (SceneInstance is { FloorId: 20462001 } tomb && prop.GroupId == 44 && prop.InstId == 300002 &&
+            interactId == 1120 && oldState == PropStateEnum.Open && newState == PropStateEnum.Locked &&
+            MissionManager!.GetSubMissionStatus(104365913) == MissionPhaseEnum.Accept &&
+            tomb.GetGroupProperty(38, "Rune2") == 0)
+            await tomb.UpdateGroupProperty(38, "Rune2", 1);
+
         await PuzzleFallback.OnGroupInteract(this, prop.GroupId);
         return prop;
     }
