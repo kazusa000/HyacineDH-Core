@@ -322,6 +322,7 @@ public class SceneInstance
         {
             (20503001, GechuanBridgeUnlock, 1) => 4,
             (20511001, WaterPipeUnlock, 1) => 8,
+            (20511001, TrainEntranceUnlock, 1) => 6,
             _ => 0
         };
         if (entranceGroup != 0)
@@ -334,15 +335,17 @@ public class SceneInstance
 
     private const string GechuanBridgeUnlock = "FSV_5DBridgeUnlock";
     private const string WaterPipeUnlock = "FSV_Area02FDCase01_Active";
+    private const string TrainEntranceUnlock = "FSV_FDTrain2_Active";
 
     // The stripped server events leave these story pipes closed despite their saved unlock values.
     internal bool IsStoryFiveDimEntryUnlocked(EntityProp prop)
     {
-        if (prop.PropInfo.PropID != 105032 || prop.State != PropStateEnum.Closed) return false;
-        return (FloorId, prop.GroupId, prop.InstId) switch
+        if (prop.State != PropStateEnum.Closed) return false;
+        return (FloorId, prop.GroupId, prop.InstId, prop.PropInfo.PropID) switch
         {
-            (20503001, 4, 300001) => GetFloorSavedValue(GechuanBridgeUnlock) == 1,
-            (20511001, 8, 300003) => GetFloorSavedValue(WaterPipeUnlock) == 1,
+            (20503001, 4, 300001, 105032) => GetFloorSavedValue(GechuanBridgeUnlock) == 1,
+            (20511001, 8, 300003, 105032) => GetFloorSavedValue(WaterPipeUnlock) == 1,
+            (20511001, 6, 300002, 105006) => GetFloorSavedValue(TrainEntranceUnlock) == 1,
             _ => false
         };
     }
