@@ -8,6 +8,7 @@ using HyacineCore.Server.Enums.Mission;
 using HyacineCore.Server.Enums.Scene;
 using HyacineCore.Server.GameServer.Game.Mission.FinishType.Handler;
 using HyacineCore.Server.GameServer.Game.Player;
+using HyacineCore.Server.GameServer.Game.Scene;
 using HyacineCore.Server.Util;
 using Newtonsoft.Json.Linq;
 
@@ -34,7 +35,8 @@ public static class PuzzleFallback
             switch (info.FinishType)
             {
                 case MissionFinishTypeEnum.FloorSavedValue:
-                    if (!PuzzleGroups(scene.FloorInfo, info).Contains(groupId)) continue;
+                    if (GechuanMoonBoss.UsesGroupResult(info) ||
+                        !PuzzleGroups(scene.FloorInfo, info).Contains(groupId)) continue;
                     Log.Warn($"sub-mission {info.ID}: group {groupId} interacted, " +
                              $"setting {info.ParamStr1}={info.ParamInt1} on floor {scene.FloorId}");
                     await scene.UpdateFloorSavedValue(info.ParamStr1, info.ParamInt1);
@@ -86,6 +88,7 @@ public static class PuzzleFallback
         switch (info.FinishType)
         {
             case MissionFinishTypeEnum.FloorSavedValue:
+                if (GechuanMoonBoss.UsesGroupResult(info)) return;
                 if (Skipped(player, info))
                 {
                     await TakeSkippedValue(player, info);
