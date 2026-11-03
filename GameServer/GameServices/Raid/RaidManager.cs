@@ -249,6 +249,20 @@ public class RaidManager : BasePlayerManager
         GameData.RaidConfigData.TryGetValue(RaidData.CurRaidId * 100 + record.WorldLevel, out var config);
         if (config == null) return;
 
+        // A finish action can already have entered the next storyline by the time LeaveRaid arrives (40476
+        // -> 1043710). On that exit floor the scene and extra lineup now belong to the storyline, not the raid.
+        var returnEntry = config.FinishEntranceID > 0 ? config.FinishEntranceID : record.OldEntryId;
+        if (record.Status == RaidStatus.Finish && returnEntry > 0 &&
+            Player.StoryLineManager?.StoryLineData.CurStoryLineId > 0 &&
+            Player.SceneInstance is { } scene && scene.EntryId == returnEntry &&
+            GameData.MazePlaneData.GetValueOrDefault(scene.PlaneId) is { PlaneType: not PlaneTypeEnum.Raid })
+        {
+            RaidData.CurRaidId = 0;
+            RaidData.CurRaidWorldLevel = 0;
+            await Player.SendPacket(new PacketRaidInfoNotify());
+            return;
+        }
+
         record.PlaneId = Player.Data.PlaneId;
         record.FloorId = Player.Data.FloorId;
         record.EntryId = Player.Data.EntryId;
