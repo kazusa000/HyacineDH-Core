@@ -38,6 +38,7 @@ public class GroupInfo
     public List<MonsterInfo> MonsterList { get; set; } = [];
     public List<PropInfo> PropList { get; set; } = [];
     public List<NpcInfo> NPCList { get; set; } = [];
+    public List<LittleGameInfo> LittleGameList { get; set; } = [];
     public Dictionary<int, GroupPropertyConfigInfo> GroupPropertyMap { get; set; } = [];
     public List<GroupStateTransitionInfo> GroupStateList { get; set; } = [];
     public ValueSourceInfo? ValueSource { get; set; }
@@ -96,6 +97,12 @@ public class GroupInfo
                 RelatedMissionId.Add(missionId);
             }
     }
+}
+
+public class LittleGameInfo
+{
+    public int ID { get; set; }
+    public string GameType { get; set; } = "";
 }
 
 public class AtmosphereCondition

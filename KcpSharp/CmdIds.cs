@@ -697,6 +697,7 @@ public class CmdIds
     public const int DMBDEOAJKOB = 30101;
     public const int FDOCALEFEFB = 30196;
     public const int GetFiveDimGameDataScRsp = 2251;
+    public const int EnterFiveDimGameCsReq = 2271;
     public const int EnterFiveDimGameScRsp = 2265;
     public const int LeaveFiveDimGameScRsp = 2266;
     public const int UpdateFiveDimGameDataScRsp = 2262;
