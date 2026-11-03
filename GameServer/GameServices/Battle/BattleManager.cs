@@ -59,6 +59,10 @@ public class BattleManager(PlayerInstance player) : BasePlayerManager(player)
 
         foreach (var prop in propList)
         {
+            // A timeline hit changes a state, rather than consuming the entity. Its broken-state graph
+            // can still control nearby props (for example, a broken time instrument stops a moving prop).
+            if (prop.PropTimelineData != null || prop.PropInfo.IsTimeRewindable) continue;
+
             await Player.SceneInstance!.RemoveEntity(prop);
             await Player.MissionManager!.HandleFinishType(MissionFinishTypeEnum.PropDestruct, prop);
             if (prop.Excel.IsMpRecover)
