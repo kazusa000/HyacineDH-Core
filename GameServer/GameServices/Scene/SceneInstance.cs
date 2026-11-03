@@ -529,20 +529,36 @@ public class SceneInstance
         const int workshop = 7;
         const string load = "GP_Server_Is5DLoad";
         const string finish = "GP_BuildFinish";
-        if (FloorId != 20513001 || GetFloorSavedValue("FSV_BuildRobot_Phase") != 1 ||
-            GetFloorSavedValue("FSV_CityFinish") == 1 ||
-            FloorInfo?.Groups.GetValueOrDefault(workshop) is not { } group ||
-            GetGroupProperty(workshop, finish) != 0)
+        const string phase = "GP_Server_BuildPhase";
+        if (FloorId != 20513001 || FloorInfo?.Groups.GetValueOrDefault(workshop) is not { } group)
             return;
 
-        var property = GetGroupProperty(workshop, "LG_110002_WeaponSetupDone") == 1 ? finish : load;
-        if (!group.GroupPropertyMap.Values.Any(x => x.Name == property) || GetGroupProperty(workshop, property) != 0)
+        string property;
+        int value;
+        // Phase 9 replays the exit performance on scene load. Once the pilot's talk ends, keep the assembled pose.
+        if (GetGroupProperty(workshop, phase) == 9 &&
+            Player.MissionManager!.GetSubMissionStatus(105410012) == MissionPhaseEnum.Finish)
+        {
+            property = phase;
+            value = 10;
+        }
+        else
+        {
+            if (GetFloorSavedValue("FSV_BuildRobot_Phase") != 1 || GetFloorSavedValue("FSV_CityFinish") == 1 ||
+                GetGroupProperty(workshop, finish) != 0)
+                return;
+            property = GetGroupProperty(workshop, "LG_110002_WeaponSetupDone") == 1 ? finish : load;
+            if (GetGroupProperty(workshop, property) != 0) return;
+            value = 1;
+        }
+
+        if (!group.GroupPropertyMap.Values.Any(x => x.Name == property))
             return;
 
         if (notify)
-            await UpdateGroupProperty(workshop, property, 1);
+            await UpdateGroupProperty(workshop, property, value);
         else
-            Player.SceneData!.GroupPropertyData[FloorId][workshop][property] = 1;
+            Player.SceneData!.GroupPropertyData[FloorId][workshop][property] = value;
     }
 
     public async ValueTask OnUseSkill(SceneCastSkillCsReq req)
