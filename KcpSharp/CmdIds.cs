@@ -984,6 +984,7 @@ public class CmdIds
     public const int TrialBackGroundMusicScRsp = 3200;
     public const int KMGIKALEKCC = 9181;
     public const int IEAMGKDIJJI = 9190;
+    public const int FEPKFPBPPLA = 9201;
     public const int CELNLKDAMKA = 9184;
     public const int CLFKMLAFKBK = 9183;
     public const int AKCMGPFKAOD = 9189;
