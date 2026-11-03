@@ -46,6 +46,12 @@ public partial class PlayerInstance
             return prop;
         }
 
+        if (TavernStellaJade.IsJade(prop))
+        {
+            await TavernStellaJade.OnInteract(prop, interactId);
+            return prop;
+        }
+
         GameData.InteractConfigData.TryGetValue(interactId, out var config);
         if (config == null || config.SrcState != prop.State)
         {

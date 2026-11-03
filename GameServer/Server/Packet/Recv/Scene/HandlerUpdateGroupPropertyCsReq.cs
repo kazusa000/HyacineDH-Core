@@ -36,7 +36,10 @@ public class HandlerUpdateGroupPropertyCsReq : Handler
         await CorePlateArrival.OnGroupProperty(connection.Player, (int)req.GroupId, req.NOCBONMOOGC,
             (int)req.BFJLBKKJBLD);
         if (scene == connection.Player.SceneInstance)
+        {
             await GechuanMoonBoss.OnGroupProperty(scene, (int)req.GroupId, req.NOCBONMOOGC, (int)req.BFJLBKKJBLD);
+            await TavernStellaJade.OnGroupProperty(scene, (int)req.GroupId, req.NOCBONMOOGC, (int)req.BFJLBKKJBLD);
+        }
 
         // The G90 flight sequence sends FakePlaneEnd only after its last shot. The 104370233 step waits for
         // the resulting floor saved value, which the client does not write directly.

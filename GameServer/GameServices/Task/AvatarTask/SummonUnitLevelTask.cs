@@ -158,7 +158,7 @@ public class SummonUnitLevelTask
     {
         foreach (var targetEntity in targetEntities)
         {
-            if (targetEntity is not EntityProp prop) continue;
+            if (targetEntity is not EntityProp prop || TavernStellaJade.IsJade(prop)) continue;
 
             await prop.Scene.RemoveEntity(prop);
             if (prop.Excel.IsMpRecover)

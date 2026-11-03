@@ -345,6 +345,7 @@ public class SceneEntityLoader(SceneInstance scene)
 
         if (Scene.IsGechuanBridgeEntryUnlocked(prop)) await prop.SetState(PropStateEnum.Open, false);
         await TavernGlass.ApplyState(prop, false);
+        await TavernStellaJade.RestoreState(prop);
 
         if (group.GroupName.Contains("Machine"))
         {
