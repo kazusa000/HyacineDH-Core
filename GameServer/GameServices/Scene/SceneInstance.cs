@@ -478,6 +478,7 @@ public class SceneInstance
     private async ValueTask UnlockPuzzleGroups(bool notify = true)
     {
         await SyncGymPlatform(notify);
+        await SyncRobotWorkshop(notify);
         var values = Player.SceneData!.GetFloorSavedValues(FloorId);
         foreach (var group in FloorInfo?.Groups.Values ?? [])
         {
@@ -519,6 +520,25 @@ public class SceneInstance
             await UpdateGroupProperty(gymGroup, platform, next);
         else
             Player.SceneData.GroupPropertyData[FloorId][gymGroup][platform] = next;
+    }
+
+    // The story starts robot assembly at phase 1. Its four FiveDim levels wait for this group property
+    // before loading, independently of the opening animation and of the completed assembly result.
+    private async ValueTask SyncRobotWorkshop(bool notify)
+    {
+        const int workshop = 7;
+        const string load = "GP_Server_Is5DLoad";
+        if (FloorId != 20513001 || GetFloorSavedValue("FSV_BuildRobot_Phase") != 1 ||
+            GetFloorSavedValue("FSV_CityFinish") == 1 ||
+            FloorInfo?.Groups.GetValueOrDefault(workshop) is not { } group ||
+            !group.GroupPropertyMap.Values.Any(x => x.Name == load) ||
+            GetGroupProperty(workshop, "GP_BuildFinish") != 0 || GetGroupProperty(workshop, load) != 0)
+            return;
+
+        if (notify)
+            await UpdateGroupProperty(workshop, load, 1);
+        else
+            Player.SceneData!.GroupPropertyData[FloorId][workshop][load] = 1;
     }
 
     public async ValueTask OnUseSkill(SceneCastSkillCsReq req)

@@ -43,7 +43,7 @@ public static class PuzzleFallback
                     await scene.UpdateFloorSavedValue(info.ParamStr1, info.ParamInt1);
                     break;
                 case MissionFinishTypeEnum.GroupPropertyValue:
-                    if (info.ID == 105400616 || info.ParamInt1 != groupId) continue;
+                    if (info.ID is 105400616 or 105410049 || info.ParamInt1 != groupId) continue;
                     Log.Warn($"sub-mission {info.ID}: group {groupId} interacted, " +
                              $"setting {info.ParamStr1}={info.ParamInt2} on floor {scene.FloorId}");
                     await scene.UpdateGroupProperty(groupId, info.ParamStr1, info.ParamInt2);
@@ -113,8 +113,8 @@ public static class PuzzleFallback
                 values[info.ParamStr1] = info.ParamInt1;
                 break;
             case MissionFinishTypeEnum.GroupPropertyValue:
-                // The gym minigame sends its result from the native moon pickup.
-                if (info.ID == 105400616) return;
+                // The gym and workshop wait for puzzle results. Opening the entrance is only a prerequisite.
+                if (info.ID is 105400616 or 105410049) return;
                 // A step waiting on a prop turned back in time (104041026: rewind G31's floating stone, which unlocks
                 // the lift, Lock=0): the 4.1 client never builds the rewind button for it (MazeMiniGameBtn stays
                 // empty, like 104010572's), so the step is taken as done and the property set as the rewind would.
