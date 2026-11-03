@@ -318,9 +318,20 @@ public class SceneInstance
 
         await Player.SendPacket(new PacketUpdateFloorSavedValueNotify(name, value, Player));
         await SyncGroupInfo(); // groups this value loads or unloads
+        if (name == GechuanBridgeUnlock && value == 1 && FloorId == 20503001)
+            foreach (var prop in GetEntitiesInGroup<EntityProp>(4).Where(IsGechuanBridgeEntryUnlocked))
+                await prop.SetState(PropStateEnum.Open);
         await ApplyFloorValueGroupStates(name, value);
         await Player.MissionManager!.HandleFinishType(MissionFinishTypeEnum.FloorSavedValue);
     }
+
+    private const string GechuanBridgeUnlock = "FSV_5DBridgeUnlock";
+
+    // The G4 server event that opens the pipe is stripped. The earned floor value also repairs a save
+    // that already has the unlock but still loads the closed entrance.
+    internal bool IsGechuanBridgeEntryUnlocked(EntityProp prop) =>
+        FloorId == 20503001 && prop.GroupId == 4 && prop.InstId == 300001 && prop.PropInfo.PropID == 105032 &&
+        prop.State == PropStateEnum.Closed && GetFloorSavedValue(GechuanBridgeUnlock) == 1;
 
     // A group graph that follows a floor saved value (one ByCompareFloorSavedValue branch per value, each running
     // ChangeGroupState) is stripped of the state each branch changes to. The branches compare the numbers the group's
