@@ -54,6 +54,10 @@ public class EraFlipperManager(PlayerInstance player)
             if (info.LevelFloorID != scene.FloorId || info.FinishType != MissionFinishTypeEnum.FloorSavedValue ||
                 string.IsNullOrEmpty(info.ParamStr1) || saved.GetValueOrDefault(info.ParamStr1) != info.ParamInt1 - 1)
                 continue;
+            // The Playing Rooms flip their lighting during load and after a crystal. Only the crystal's
+            // group-property report advances these stages; a load-time flip would otherwise skip the crystal.
+            if (scene.FloorId == 20481001 && info.ParamStr1 is ("FSV_PlayingRoom1Stage" or "FSV_PlayingRoom2Stage"))
+                continue;
             var name = $"\"{info.ParamStr1}\"";
             if (!(scene.FloorInfo?.Groups.Values ?? []).Any(g => !string.IsNullOrEmpty(g.LevelGraph) &&
                                                                 PuzzleFallback.ReadGraph(g.LevelGraph) is var text &&

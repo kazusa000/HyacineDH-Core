@@ -46,15 +46,21 @@ public class HandlerUpdateGroupPropertyCsReq : Handler
             player.SceneData!.GetFloorSavedValues(scene.FloorId).GetValueOrDefault("FSV_TriggerFakePlane") == 1)
             await scene.UpdateFloorSavedValue("FSV_TriggerFakePlane", 2);
 
-        // The first Playing Room reports each restored crystal as a group property. Its mission and the next
-        // crystal both wait for the matching floor stage, which must advance in order.
-        if (scene == player.SceneInstance && scene.FloorId == 20481001 && req.GroupId == 39 &&
-            req.NOCBONMOOGC == "SGP_PlayingRoom1Stage" && req.BFJLBKKJBLD is 3 or 4)
+        // Both Playing Rooms use this group property name. The group identifies the floor key, and the
+        // current stage and running mission prevent a late or repeated notification from jumping ahead.
+        if (scene == player.SceneInstance && scene.FloorId == 20481001 && req.NOCBONMOOGC == "SGP_PlayingRoom1Stage")
         {
-            const string roomStage = "FSV_PlayingRoom1Stage";
             var stage = (int)req.BFJLBKKJBLD;
-            var mission = stage == 3 ? 104370636 : 104370637;
-            if (player.MissionManager!.GetRunningSubMissionIdList().Contains(mission) &&
+            var (roomStage, mission) = (req.GroupId, stage) switch
+            {
+                (39, 3) => ("FSV_PlayingRoom1Stage", 104370636),
+                (39, 4) => ("FSV_PlayingRoom1Stage", 104370637),
+                (48, 2) => ("FSV_PlayingRoom2Stage", 104370652),
+                (48, 3) => ("FSV_PlayingRoom2Stage", 104370653),
+                (48, 4) => ("FSV_PlayingRoom2Stage", 104370654),
+                _ => ("", 0)
+            };
+            if (mission != 0 && player.MissionManager!.GetRunningSubMissionIdList().Contains(mission) &&
                 player.SceneData!.GetFloorSavedValues(scene.FloorId).GetValueOrDefault(roomStage) == stage - 1)
                 await scene.UpdateFloorSavedValue(roomStage, stage);
         }
