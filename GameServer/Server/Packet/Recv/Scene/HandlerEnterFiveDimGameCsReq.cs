@@ -1,4 +1,5 @@
 using HyacineCore.Server.Enums.Mission;
+using HyacineCore.Server.GameServer.Game.Mission;
 using HyacineCore.Server.GameServer.Server.Packet.Send.Scene;
 using HyacineCore.Server.Kcp;
 using HyacineCore.Server.Proto;
@@ -18,11 +19,14 @@ public class HandlerEnterFiveDimGameCsReq : Handler
         var valid = target != null && floor != null &&
                     floor.Groups.TryGetValue((int)target.GroupId, out var group) &&
                     group.LittleGameList.Any(level => level.GameType == "FiveDim" && level.ID == target.HIIHFHPBJKH);
+        var waterPipeGuide = valid && scene != null && PuzzleFallback.NoteWaterPipeGuide(scene, req);
 
         // The client waits for this acknowledgment before handing control to the loaded 2D instance.
         var packet = new BasePacket(CmdIds.EnterFiveDimGameScRsp);
         packet.SetData(new EnterFiveDimGameScRsp { Retcode = valid ? 0u : (uint)Retcode.RetReqParaInvalid });
         await connection.SendPacket(packet);
+        if (waterPipeGuide && scene == player!.SceneInstance)
+            await PuzzleFallback.SyncGuidedWaterPipe(scene!);
 
         // Arm the pilot scene for this visit. Its FiveDim exit still has to trigger ReadyToPlayC.
         // Persisting phase 2 would start the pilot scene on reload, before the player reaches the cockpit.

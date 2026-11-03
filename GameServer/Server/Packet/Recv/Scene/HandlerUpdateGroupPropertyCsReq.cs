@@ -43,6 +43,14 @@ public class HandlerUpdateGroupPropertyCsReq : Handler
             // The weapon stage sends this after all assembly lights turn green.
             if (req.GroupId == 7 && req.NOCBONMOOGC == "LG_110002_WeaponSetupDone" && req.BFJLBKKJBLD == 1)
                 await scene.SyncRobotWorkshop();
+
+            if (req.GroupId == 8 && req.BFJLBKKJBLD == 1 &&
+                req.NOCBONMOOGC is "LG_110002__14_BombTriggerState_Auto" or
+                    "LG_110002__10_BombTriggerState_Auto" or "LG_110002__11_BombTriggerState_Auto")
+            {
+                await scene.SyncWaterPipe();
+                await PuzzleFallback.SyncGuidedWaterPipe(scene);
+            }
         }
 
         // The G90 flight sequence sends FakePlaneEnd only after its last shot. The 104370233 step waits for

@@ -492,6 +492,7 @@ public class SceneInstance
     {
         await SyncGymPlatform(notify);
         await SyncRobotWorkshop(notify);
+        await SyncWaterPipe(notify);
         var values = Player.SceneData!.GetFloorSavedValues(FloorId);
         foreach (var group in FloorInfo?.Groups.Values ?? [])
         {
@@ -572,6 +573,29 @@ public class SceneInstance
             await UpdateGroupProperty(workshop, property, value);
         else
             Player.SceneData!.GroupPropertyData[FloorId][workshop][property] = value;
+    }
+
+    internal const string WaterPipePhase = "LG_110002_WaterPhase";
+    internal bool WaterPipeGuideRequested { get; set; }
+
+    // The three native blast switches drain successive sections. Reapply saved results on scene load.
+    internal async ValueTask SyncWaterPipe(bool notify = true)
+    {
+        if (FloorId != 20511001 || Player.MissionManager?.GetSubMissionStatus(105410143) != MissionPhaseEnum.Accept)
+            return;
+
+        const int group = 8;
+        var phase = GetGroupProperty(group, WaterPipePhase);
+        var next = phase;
+        if (next == 0 && GetGroupProperty(group, "LG_110002__14_BombTriggerState_Auto") == 1) next = 1;
+        if (next == 1 && GetGroupProperty(group, "LG_110002__10_BombTriggerState_Auto") == 1) next = 2;
+        if (next == 2 && GetGroupProperty(group, "LG_110002__11_BombTriggerState_Auto") == 1) next = 3;
+        if (next == phase) return;
+
+        if (notify)
+            await UpdateGroupProperty(group, WaterPipePhase, next);
+        else
+            Player.SceneData!.GroupPropertyData[FloorId][group][WaterPipePhase] = next;
     }
 
     public async ValueTask OnUseSkill(SceneCastSkillCsReq req)

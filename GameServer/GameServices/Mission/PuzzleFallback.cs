@@ -9,6 +9,7 @@ using HyacineCore.Server.Enums.Scene;
 using HyacineCore.Server.GameServer.Game.Mission.FinishType.Handler;
 using HyacineCore.Server.GameServer.Game.Player;
 using HyacineCore.Server.GameServer.Game.Scene;
+using HyacineCore.Server.Proto;
 using HyacineCore.Server.Util;
 using Newtonsoft.Json.Linq;
 
@@ -448,6 +449,30 @@ public static class PuzzleFallback
             Log.Warn($"group {groupId} set {name}={value} with its floor float, setting {saved}={set} on floor {scene.FloorId}");
             await scene.UpdateFloorSavedValue(saved, set);
         }
+    }
+
+    // The native one-click route requests the last blast switch itself as the destination. No portal targets it.
+    internal static bool NoteWaterPipeGuide(SceneInstance scene, EnterFiveDimGameCsReq req)
+    {
+        if (!ConfigManager.Config.ServerOption.PuzzleFallback || scene.FloorId != 20511001 ||
+            req.GAHICMJOCEC is not { GroupId: 8, HIIHFHPBJKH: 110002 } || req.NKDPFHGFDPD?.EntityId != 11 ||
+            scene.Player.MissionManager!.GetSubMissionStatus(105410143) != MissionPhaseEnum.Accept)
+            return false;
+
+        scene.WaterPipeGuideRequested = true;
+        return true;
+    }
+
+    internal static async ValueTask SyncGuidedWaterPipe(SceneInstance scene)
+    {
+        if (!ConfigManager.Config.ServerOption.PuzzleFallback || !scene.WaterPipeGuideRequested ||
+            scene.Player.MissionManager!.GetSubMissionStatus(105410143) != MissionPhaseEnum.Accept ||
+            scene.GetGroupProperty(8, "LG_110002__11_BombTriggerState_Auto") != 1 ||
+            scene.GetGroupProperty(8, SceneInstance.WaterPipePhase) >= 3)
+            return;
+
+        Log.Warn("sub-mission 105410143: native guided entry reached the final blast switch");
+        await scene.UpdateGroupProperty(8, SceneInstance.WaterPipePhase, 3);
     }
 
     private const int RaidEntranceGoto = 6900;
