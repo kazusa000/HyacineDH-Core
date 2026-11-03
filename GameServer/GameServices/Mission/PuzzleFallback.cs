@@ -6,6 +6,7 @@ using HyacineCore.Server.Data.Config.Scene;
 using HyacineCore.Server.Data.Custom;
 using HyacineCore.Server.Enums.Mission;
 using HyacineCore.Server.Enums.Scene;
+using HyacineCore.Server.GameServer.Game.Mission.FinishType.Handler;
 using HyacineCore.Server.GameServer.Game.Player;
 using HyacineCore.Server.Util;
 using Newtonsoft.Json.Linq;
@@ -71,7 +72,10 @@ public static class PuzzleFallback
         if (!ConfigManager.Config.ServerOption.PuzzleFallback) return;
         if (player.MissionManager!.GetSubMissionStatus(info.ID) != MissionPhaseEnum.Accept) return;
         var type = info.FinishType.ToString();
-        if (MinigamePrefixes.Any(type.StartsWith) && !MissionManager.FinishTypeHandlers.ContainsKey(info.FinishType))
+        var noFiveDimProperty = info.FinishType == MissionFinishTypeEnum.FiveDimFinish &&
+                                !MissionHandlerFiveDimFinish.HasServerProperty(info);
+        if (noFiveDimProperty ||
+            (MinigamePrefixes.Any(type.StartsWith) && !MissionManager.FinishTypeHandlers.ContainsKey(info.FinishType)))
         {
             Log.Warn($"sub-mission {info.ID}: minigame step {type} is not implemented, skipping it");
             await player.MissionManager.FinishSubMission(info.ID);
