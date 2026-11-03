@@ -162,8 +162,9 @@ public class PacketSceneGroupRefreshScNotify : BasePacket
             foreach (var data in dataList)
                 group.IJABHDPLDMI.Add(new MAALENOAMPC
                 {
-                    JDJOCEHPOKF = data.NewValue,
-                    EAGKBEMCFAB = data.OldValue,
+                    // The client applies EAGKBEMCFAB as the current value.
+                    JDJOCEHPOKF = data.OldValue,
+                    EAGKBEMCFAB = data.NewValue,
                     NOCBONMOOGC = data.PropertyName
                 });
 
