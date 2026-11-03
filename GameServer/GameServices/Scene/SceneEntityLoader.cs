@@ -343,7 +343,7 @@ public class SceneEntityLoader(SceneInstance scene)
         var timelineData = Scene.Player.GetScenePropTimelineData(Scene.FloorId, group.Id, info.ID);
         prop.PropTimelineData = timelineData;
 
-        if (Scene.IsGechuanBridgeEntryUnlocked(prop)) await prop.SetState(PropStateEnum.Open, false);
+        if (Scene.IsStoryFiveDimEntryUnlocked(prop)) await prop.SetState(PropStateEnum.Open, false);
         await TavernGlass.ApplyState(prop, false);
         await TavernStellaJade.RestoreState(prop);
 

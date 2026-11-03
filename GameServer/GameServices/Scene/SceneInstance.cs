@@ -318,8 +318,14 @@ public class SceneInstance
 
         await Player.SendPacket(new PacketUpdateFloorSavedValueNotify(name, value, Player));
         await SyncGroupInfo(); // groups this value loads or unloads
-        if (name == GechuanBridgeUnlock && value == 1 && FloorId == 20503001)
-            foreach (var prop in GetEntitiesInGroup<EntityProp>(4).Where(IsGechuanBridgeEntryUnlocked))
+        var entranceGroup = (FloorId, name, value) switch
+        {
+            (20503001, GechuanBridgeUnlock, 1) => 4,
+            (20511001, WaterPipeUnlock, 1) => 8,
+            _ => 0
+        };
+        if (entranceGroup != 0)
+            foreach (var prop in GetEntitiesInGroup<EntityProp>(entranceGroup).Where(IsStoryFiveDimEntryUnlocked))
                 await prop.SetState(PropStateEnum.Open);
         await TavernGlass.OnFloorValueChange(this, name);
         await ApplyFloorValueGroupStates(name, value);
@@ -327,12 +333,19 @@ public class SceneInstance
     }
 
     private const string GechuanBridgeUnlock = "FSV_5DBridgeUnlock";
+    private const string WaterPipeUnlock = "FSV_Area02FDCase01_Active";
 
-    // The G4 server event that opens the pipe is stripped. The earned floor value also repairs a save
-    // that already has the unlock but still loads the closed entrance.
-    internal bool IsGechuanBridgeEntryUnlocked(EntityProp prop) =>
-        FloorId == 20503001 && prop.GroupId == 4 && prop.InstId == 300001 && prop.PropInfo.PropID == 105032 &&
-        prop.State == PropStateEnum.Closed && GetFloorSavedValue(GechuanBridgeUnlock) == 1;
+    // The stripped server events leave these story pipes closed despite their saved unlock values.
+    internal bool IsStoryFiveDimEntryUnlocked(EntityProp prop)
+    {
+        if (prop.PropInfo.PropID != 105032 || prop.State != PropStateEnum.Closed) return false;
+        return (FloorId, prop.GroupId, prop.InstId) switch
+        {
+            (20503001, 4, 300001) => GetFloorSavedValue(GechuanBridgeUnlock) == 1,
+            (20511001, 8, 300003) => GetFloorSavedValue(WaterPipeUnlock) == 1,
+            _ => false
+        };
+    }
 
     // A group graph that follows a floor saved value (one ByCompareFloorSavedValue branch per value, each running
     // ChangeGroupState) is stripped of the state each branch changes to. The branches compare the numbers the group's
