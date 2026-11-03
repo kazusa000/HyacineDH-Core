@@ -55,6 +55,14 @@ public class HandlerUpdateGroupPropertyCsReq : Handler
             player.SceneData!.GetFloorSavedValues(scene.FloorId).GetValueOrDefault("FSV_TriggerFakePlane") == 1)
             await scene.UpdateFloorSavedValue("FSV_TriggerFakePlane", 2);
 
+        // The city fight starts after the native Ranger attack sequence sends this result.
+        if (scene == player.SceneInstance && scene.FloorId == 20513001 && req.GroupId == 26 &&
+            req.NOCBONMOOGC == "GP_Server_QTEDone" && req.BFJLBKKJBLD == 1 &&
+            scene.GetGroupProperty(26, "GP_Server_QTEDone") == 1 &&
+            scene.GetFloorSavedValue("FSV_HeroQTE_Done") == 0 &&
+            player.MissionManager!.GetRunningSubMissionIdList().Contains(105410014))
+            await scene.UpdateFloorSavedValue("FSV_HeroQTE_Done", 1);
+
         // Both Playing Rooms use this group property name. The group identifies the floor key, and the
         // current stage and running mission prevent a late or repeated notification from jumping ahead.
         if (scene == player.SceneInstance && scene.FloorId == 20481001 && req.NOCBONMOOGC == "SGP_PlayingRoom1Stage")

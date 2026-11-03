@@ -36,7 +36,7 @@ public static class PuzzleFallback
             {
                 case MissionFinishTypeEnum.FloorSavedValue:
                     if (GechuanMoonBoss.UsesGroupResult(info) || TavernGlass.UsesHit(info) ||
-                        TavernStellaJade.UsesNativeResult(info) ||
+                        TavernStellaJade.UsesNativeResult(info) || info.ID == 105410014 ||
                         !PuzzleGroups(scene.FloorInfo, info).Contains(groupId)) continue;
                     Log.Warn($"sub-mission {info.ID}: group {groupId} interacted, " +
                              $"setting {info.ParamStr1}={info.ParamInt1} on floor {scene.FloorId}");
@@ -90,7 +90,7 @@ public static class PuzzleFallback
         {
             case MissionFinishTypeEnum.FloorSavedValue:
                 if (GechuanMoonBoss.UsesGroupResult(info) || TavernGlass.UsesHit(info) ||
-                    TavernStellaJade.UsesNativeResult(info)) return;
+                    TavernStellaJade.UsesNativeResult(info) || info.ID == 105410014) return;
                 if (Skipped(player, info))
                 {
                     await TakeSkippedValue(player, info);
@@ -376,6 +376,7 @@ public static class PuzzleFallback
 
     internal static bool Skipped(PlayerInstance player, SubMissionInfo info)
     {
+        if (info.ID == 105410014) return false;
         if (player.SceneData!.FloorSavedData.GetValueOrDefault(info.LevelFloorID) is not { } values) return false;
         var name = $"\"{info.ParamStr1}\"";
         foreach (var group in GameData.GetFloorInfo(info.LevelFloorID)?.Groups.Values ?? [])
