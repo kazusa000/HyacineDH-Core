@@ -197,7 +197,8 @@ public static class PuzzleFallback
                group.PropList.Any(p => !p.IsClientOnly && !p.IsDelete && p.LoadOnInitial);
     }
 
-    // Client graphs set server group properties with RequestSetServerGroupProperty (UpdateGroupPropertyCsReq).
+    // Both generations of the client action send UpdateGroupPropertyCsReq. V2 can target its own group
+    // by omitting GroupID, as the three rune puzzles in 20462001 G42 do on PuzzleEnd.
     private static bool ClientSetsGroupProperty(FloorInfo? floor, int groupId, string name)
     {
         return (floor?.Groups.Values ?? []).Any(g =>
@@ -205,9 +206,16 @@ public static class PuzzleFallback
             if (string.IsNullOrEmpty(g.LevelGraph)) return false;
             var text = ReadGraph(g.LevelGraph);
             if (!text.Contains("RequestSetServerGroupProperty") || !text.Contains($"\"{name}\"")) return false;
-            return JToken.Parse(text).SelectTokens("$..*").OfType<JObject>()
-                .Where(t => (string?)t["$type"] == "RPG.GameCore.RequestSetServerGroupProperty")
-                .Any(t => (int?)t["GroupID"] == groupId && (string?)t["DynamicName"]?["Value"] == name);
+            return JToken.Parse(text).SelectTokens("$..*").OfType<JObject>().Any(t =>
+            {
+                var type = (string?)t["$type"];
+                if (type is not ("RPG.GameCore.RequestSetServerGroupProperty" or
+                    "RPG.GameCore.RequestSetServerGroupPropertyV2")) return false;
+                if ((string?)t["DynamicName"]?["Value"] != name) return false;
+                var target = (int?)t["GroupID"] ?? 0;
+                if (target == 0 && type == "RPG.GameCore.RequestSetServerGroupPropertyV2") target = g.Id;
+                return target == groupId;
+            });
         });
     }
 
