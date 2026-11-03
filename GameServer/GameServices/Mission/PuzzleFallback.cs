@@ -107,7 +107,8 @@ public static class PuzzleFallback
                 // A step waiting on a prop turned back in time (104041026: rewind G31's floating stone, which unlocks
                 // the lift, Lock=0): the 4.1 client never builds the rewind button for it (MazeMiniGameBtn stays
                 // empty, like 104010572's), so the step is taken as done and the property set as the rewind would.
-                if (floor?.Groups.GetValueOrDefault(info.WayPointGroupID)?.PropList
+                // This was verified only for the gate, not for the tomb fan's separate rune puzzle (104365928).
+                if (info.ID == 104041026 && floor?.Groups.GetValueOrDefault(info.WayPointGroupID)?.PropList
                         .FirstOrDefault(x => x.ID == info.WayPointEntityID) is { IsTimeRewindable: true })
                 {
                     Log.Warn($"sub-mission {info.ID}: waypoint prop {info.WayPointGroupID}/{info.WayPointEntityID} is " +
