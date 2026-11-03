@@ -35,5 +35,15 @@ public class HandlerUpdateGroupPropertyCsReq : Handler
         await new EraFlipperManager(connection.Player).OnGroupProperty(req.NOCBONMOOGC, (int)req.BFJLBKKJBLD);
         await CorePlateArrival.OnGroupProperty(connection.Player, (int)req.GroupId, req.NOCBONMOOGC,
             (int)req.BFJLBKKJBLD);
+
+        // The G90 flight sequence sends FakePlaneEnd only after its last shot. The 104370233 step waits for
+        // the resulting floor saved value, which the client does not write directly.
+        var player = connection.Player;
+        if (scene == player.SceneInstance && scene.FloorId == 20482001 && req.GroupId == 90 &&
+            req.NOCBONMOOGC == "FakePlaneEnd" && req.BFJLBKKJBLD == 1 &&
+            player.StoryLineManager?.StoryLineData.CurStoryLineId == 1043702 &&
+            player.MissionManager!.GetRunningSubMissionIdList().Contains(104370233) &&
+            player.SceneData!.GetFloorSavedValues(scene.FloorId).GetValueOrDefault("FSV_TriggerFakePlane") == 1)
+            await scene.UpdateFloorSavedValue("FSV_TriggerFakePlane", 2);
     }
 }
