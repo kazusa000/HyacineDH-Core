@@ -477,6 +477,7 @@ public class SceneInstance
 
     private async ValueTask UnlockPuzzleGroups(bool notify = true)
     {
+        await SyncGymPlatform(notify);
         var values = Player.SceneData!.GetFloorSavedValues(FloorId);
         foreach (var group in FloorInfo?.Groups.Values ?? [])
         {
@@ -491,6 +492,33 @@ public class SceneInstance
                 // Before the scene is sent: the scene info carries the saved value.
                 Player.SceneData.GroupPropertyData[FloorId][group.Id][PuzzleStateProperty] = 0;
         }
+    }
+
+    // The gym controller is client-side. The group graph builds it locked for 0 and ready to lift for 2.
+    // Keep the player's selection (1) when loading a save after the controller was unlocked.
+    private async ValueTask SyncGymPlatform(bool notify)
+    {
+        const int gymGroup = 31;
+        const string platform = "GP_Platform";
+        const string unlock = "FSV_Gym_Platform_Controller";
+        if (FloorId != 20501001 || FloorInfo?.Groups.GetValueOrDefault(gymGroup) is not { } group ||
+            !group.GroupPropertyMap.Values.Any(x => x.Name == platform) ||
+            Player.SceneData!.FloorSavedData.GetValueOrDefault(FloorId)?.TryGetValue(unlock, out var saved) != true)
+            return;
+
+        var current = GetGroupProperty(gymGroup, platform);
+        var next = (saved, current) switch
+        {
+            (2, 0) => 2,
+            (0, 1 or 2) => 0,
+            _ => current
+        };
+        if (next == current) return;
+
+        if (notify)
+            await UpdateGroupProperty(gymGroup, platform, next);
+        else
+            Player.SceneData.GroupPropertyData[FloorId][gymGroup][platform] = next;
     }
 
     public async ValueTask OnUseSkill(SceneCastSkillCsReq req)
