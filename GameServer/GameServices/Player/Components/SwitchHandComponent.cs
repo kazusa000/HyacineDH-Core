@@ -68,9 +68,8 @@ public class SwitchHandComponent(PlayerInstance player) : BasePlayerComponent(pl
         return (Retcode.RetSucc, dbInfo);
     }
 
-    // The hand catching or laying a catchable prop (1040106's scale in G51): the update names the prop and the
-    // operation, and the prop's state follows it. Its graph (SwitchHandCatchable) reads Open as holding the item and
-    // Closed as an empty spot to lay one on; the group graph's listeners for Open -> Closed offer the plate's slots.
+    // Catch and lay can both send Okgfofadjmd. In the tomb (G44) taking the cube sends state 0 for the source,
+    // and placing it sends state 1 for the socket. The socket must open so its group graph can continue.
     public async ValueTask HandleItemOp(GOPPKKEGPPG? op)
     {
         if (op == null || op.PHOMPFCPNML == 0 || Player.SceneInstance is not { } scene) return;
@@ -79,7 +78,8 @@ public class SwitchHandComponent(PlayerInstance player) : BasePlayerComponent(pl
         Logger.GetByClassName().Info(
             $"Hand {op.OpType} prop {op.GroupId}:{op.PHOMPFCPNML} ({op.NLOPDLONLAF}) state {prop?.State}");
         if (prop == null) return;
-        if (op.OpType == JLGANPHGGHB.Okgfofadjmd) await prop.SetState(PropStateEnum.Closed);
+        if (op.OpType == JLGANPHGGHB.Okgfofadjmd && op.NLOPDLONLAF <= (uint)PropStateEnum.Open)
+            await prop.SetState((PropStateEnum)op.NLOPDLONLAF);
         else if (op.OpType == JLGANPHGGHB.Gfhldkelcmi) await prop.SetState(PropStateEnum.Open);
     }
 }
