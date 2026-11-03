@@ -522,23 +522,27 @@ public class SceneInstance
             Player.SceneData.GroupPropertyData[FloorId][gymGroup][platform] = next;
     }
 
-    // The story starts robot assembly at phase 1. Its four FiveDim levels wait for this group property
-    // before loading, independently of the opening animation and of the completed assembly result.
-    private async ValueTask SyncRobotWorkshop(bool notify)
+    // The story starts robot assembly at phase 1. Load the levels and recover the completion property
+    // from a saved native weapon result if the previous session ended before it was applied.
+    internal async ValueTask SyncRobotWorkshop(bool notify = true)
     {
         const int workshop = 7;
         const string load = "GP_Server_Is5DLoad";
+        const string finish = "GP_BuildFinish";
         if (FloorId != 20513001 || GetFloorSavedValue("FSV_BuildRobot_Phase") != 1 ||
             GetFloorSavedValue("FSV_CityFinish") == 1 ||
             FloorInfo?.Groups.GetValueOrDefault(workshop) is not { } group ||
-            !group.GroupPropertyMap.Values.Any(x => x.Name == load) ||
-            GetGroupProperty(workshop, "GP_BuildFinish") != 0 || GetGroupProperty(workshop, load) != 0)
+            GetGroupProperty(workshop, finish) != 0)
+            return;
+
+        var property = GetGroupProperty(workshop, "LG_110002_WeaponSetupDone") == 1 ? finish : load;
+        if (!group.GroupPropertyMap.Values.Any(x => x.Name == property) || GetGroupProperty(workshop, property) != 0)
             return;
 
         if (notify)
-            await UpdateGroupProperty(workshop, load, 1);
+            await UpdateGroupProperty(workshop, property, 1);
         else
-            Player.SceneData!.GroupPropertyData[FloorId][workshop][load] = 1;
+            Player.SceneData!.GroupPropertyData[FloorId][workshop][property] = 1;
     }
 
     public async ValueTask OnUseSkill(SceneCastSkillCsReq req)

@@ -39,6 +39,10 @@ public class HandlerUpdateGroupPropertyCsReq : Handler
         {
             await GechuanMoonBoss.OnGroupProperty(scene, (int)req.GroupId, req.NOCBONMOOGC, (int)req.BFJLBKKJBLD);
             await TavernStellaJade.OnGroupProperty(scene, (int)req.GroupId, req.NOCBONMOOGC, (int)req.BFJLBKKJBLD);
+
+            // The weapon stage sends this after all assembly lights turn green.
+            if (req.GroupId == 7 && req.NOCBONMOOGC == "LG_110002_WeaponSetupDone" && req.BFJLBKKJBLD == 1)
+                await scene.SyncRobotWorkshop();
         }
 
         // The G90 flight sequence sends FakePlaneEnd only after its last shot. The 104370233 step waits for
