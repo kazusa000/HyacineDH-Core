@@ -35,7 +35,7 @@ public static class PuzzleFallback
             switch (info.FinishType)
             {
                 case MissionFinishTypeEnum.FloorSavedValue:
-                    if (GechuanMoonBoss.UsesGroupResult(info) ||
+                    if (GechuanMoonBoss.UsesGroupResult(info) || TavernGlass.UsesHit(info) ||
                         !PuzzleGroups(scene.FloorInfo, info).Contains(groupId)) continue;
                     Log.Warn($"sub-mission {info.ID}: group {groupId} interacted, " +
                              $"setting {info.ParamStr1}={info.ParamInt1} on floor {scene.FloorId}");
@@ -88,7 +88,7 @@ public static class PuzzleFallback
         switch (info.FinishType)
         {
             case MissionFinishTypeEnum.FloorSavedValue:
-                if (GechuanMoonBoss.UsesGroupResult(info)) return;
+                if (GechuanMoonBoss.UsesGroupResult(info) || TavernGlass.UsesHit(info)) return;
                 if (Skipped(player, info))
                 {
                     await TakeSkippedValue(player, info);

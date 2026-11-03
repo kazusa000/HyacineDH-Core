@@ -344,6 +344,7 @@ public class SceneEntityLoader(SceneInstance scene)
         prop.PropTimelineData = timelineData;
 
         if (Scene.IsGechuanBridgeEntryUnlocked(prop)) await prop.SetState(PropStateEnum.Open, false);
+        await TavernGlass.ApplyState(prop, false);
 
         if (group.GroupName.Contains("Machine"))
         {

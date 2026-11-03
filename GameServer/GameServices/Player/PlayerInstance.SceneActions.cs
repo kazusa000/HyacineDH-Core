@@ -40,6 +40,12 @@ public partial class PlayerInstance
         if (SceneInstance == null) return null;
         SceneInstance.Entities.TryGetValue(propEntityId, out var entity);
         if (entity is not EntityProp prop) return null;
+        if (TavernGlass.IsGlass(prop))
+        {
+            await TavernGlass.OnInteract(prop, interactId);
+            return prop;
+        }
+
         GameData.InteractConfigData.TryGetValue(interactId, out var config);
         if (config == null || config.SrcState != prop.State)
         {

@@ -321,6 +321,7 @@ public class SceneInstance
         if (name == GechuanBridgeUnlock && value == 1 && FloorId == 20503001)
             foreach (var prop in GetEntitiesInGroup<EntityProp>(4).Where(IsGechuanBridgeEntryUnlocked))
                 await prop.SetState(PropStateEnum.Open);
+        await TavernGlass.OnFloorValueChange(this, name);
         await ApplyFloorValueGroupStates(name, value);
         await Player.MissionManager!.HandleFinishType(MissionFinishTypeEnum.FloorSavedValue);
     }
